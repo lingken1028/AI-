@@ -46,6 +46,7 @@ export interface AIAnalysis {
   winRate: number; // Percentage 0-100 (Current Probability)
   historicalWinRate: number; // Percentage 0-100 (Past Accuracy)
   entryPrice: number;
+  entryStrategy: string; // NEW: Specific execution method (e.g., "Limit Order @ Support")
   takeProfit: number;
   stopLoss: number;
   supportLevel: number; // 关键支撑位 (Rigorous Level)
@@ -57,6 +58,7 @@ export interface AIAnalysis {
   marketStructure: 'Bullish Structure' | 'Bearish Structure' | 'Ranging/Consolidation' | 'Breakout' | 'Correction'; // 市场结构状态
   keyFactors: string[]; // List of "AI Ref" - key data points/news references
   kLineTrend: string; // Specific description of the K-line trend for the selected timeframe
+  trendResonance: string; // NEW: Multi-Timeframe Resonance status (e.g., "4H Up + 15m Up")
   guruInsights: GuruInsight[]; // Array of insights from different simulated masters
   deepSeekReasoning: string; // The "DeepSeek" logic block (Red Teaming Result)
   modelFusionConfidence: number; // How much the two models agree (0-100)
@@ -75,7 +77,10 @@ export enum BacktestStrategy {
   RSI_REVERSAL = "RSI 超买/超卖反转",
   BOLLINGER_BREAKOUT = "布林带突破",
   MA_CROSSOVER = "均线交叉 (MA5/MA20)",
-  TURTLE_TRADING = "海龟交易法则 (20日突破)"
+  TURTLE_TRADING = "海龟交易法则 (20日突破)",
+  ICT_SMC = "ICT/SMC 聪明钱 (订单块+流动性)",
+  STEVE_COHEN = "Steve Cohen 盘口量价爆发",
+  AL_BROOKS = "Al Brooks 裸K价格行为 (PA)"
 }
 
 export enum BacktestPeriod {

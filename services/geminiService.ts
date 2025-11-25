@@ -72,12 +72,19 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
     1. Analyze the query to extract the intended financial asset. Ignore numbers that look like prices, timeframes, or noise (e.g. in "XAUUSD 5min 4132", the asset is "XAUUSD").
     2. Use Google Search to find the official trading ticker.
     3. Return the symbol in standard TradingView format (EXCHANGE:TICKER).
-       Examples: "NASDAQ:AAPL", "NYSE:BA", "HKEX:0700", "OANDA:XAUUSD", "FOREXCOM:EURUSD".
+       
+       Mapping Rules for CHINA/HK STOCKS (Important):
+       - If input is 6 digits starting with '6' (e.g., 600519) -> Use "SSE:6xxxxx" (Shanghai).
+       - If input is 6 digits starting with '0' or '3' (e.g., 000001, 300059) -> Use "SZSE:xxxxxx" (Shenzhen).
+       - If input is 4-5 digits (e.g., 700, 00700) -> Use "HKEX:00700" (Hong Kong).
+       
+       Other Examples: "NASDAQ:AAPL", "NYSE:BA", "OANDA:XAUUSD".
+
     4. Return the full official company/asset name.
     5. Return the approximate current price if found (number only), otherwise 0.
     
     IMPORTANT: 
-    - If the user types "XAUUSD" or "Gold", return a valid forex/commodity ticker like "OANDA:XAUUSD".
+    - If the user types "XAUUSD" or "Gold", return a valid forex/commodity ticker like "OANDA:XAUUSD" or "TVC:GOLD".
     - If no matching stock is found, explicitly set "symbol" to null.
     
     Output strictly JSON in this format:
@@ -120,7 +127,11 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
     
     // Ensure symbol has a colon (EXCHANGE:TICKER) to be valid for TradingView
     if (!data.symbol.includes(':')) {
-        if (data.symbol.match(/^[A-Z]{3,5}$/)) {
+        if (data.symbol.match(/^[0-9]{6}$/)) {
+            // Fix for raw China codes returned without exchange
+            if (data.symbol.startsWith('6')) data.symbol = `SSE:${data.symbol}`;
+            else data.symbol = `SZSE:${data.symbol}`;
+        } else if (data.symbol.match(/^[A-Z]{3,5}$/)) {
              data.symbol = `NASDAQ:${data.symbol}`; 
         } else if (data.symbol.includes('XAU') || data.symbol.includes('EUR')) {
              data.symbol = `FX:${data.symbol}`;
@@ -146,9 +157,18 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
         else if (cleanQuery === 'ETH' || cleanQuery === 'ETHEREUM') cleanQuery = 'BINANCE:ETHUSDT';
         else if (cleanQuery === 'SOL') cleanQuery = 'BINANCE:SOLUSDT';
         else if (cleanQuery === 'XAUUSD' || cleanQuery === 'GOLD') cleanQuery = 'OANDA:XAUUSD';
-        else if (/^[0-9]{4,6}$/.test(cleanQuery)) {
-            // Likely Hong Kong or China Stock
-            cleanQuery = `HKEX:${cleanQuery}`; 
+        
+        // China A-Shares Heuristics (Fix for 1D limit issue - Need correct exchange)
+        else if (/^[0-9]{6}$/.test(cleanQuery)) {
+            if (cleanQuery.startsWith('6')) {
+                cleanQuery = `SSE:${cleanQuery}`; // Shanghai
+            } else {
+                cleanQuery = `SZSE:${cleanQuery}`; // Shenzhen (starts with 0 or 3)
+            }
+        }
+        else if (/^[0-9]{4,5}$/.test(cleanQuery)) {
+            // Hong Kong
+            cleanQuery = `HKEX:${cleanQuery.padStart(5, '0')}`; 
         } 
         else if (!cleanQuery.includes(':')) {
              // Default to NASDAQ for simple tickers
@@ -180,17 +200,37 @@ const getPredictionHorizon = (tf: Timeframe): string => {
   }
 };
 
+// Helper to determine the "Higher Timeframe" for resonance check
+const getHigherTimeframe = (tf: Timeframe): string => {
+    switch (tf) {
+        case Timeframe.M1:
+        case Timeframe.M3:
+        case Timeframe.M5: return "1 Hour Chart"; // Scalping checks H1
+        case Timeframe.M15:
+        case Timeframe.M30: return "4 Hour Chart"; // Intraday checks H4
+        case Timeframe.H1:
+        case Timeframe.H2:
+        case Timeframe.H4: return "Daily Chart"; // Swing checks Daily
+        case Timeframe.D1: return "Weekly Chart"; // Position checks Weekly
+        default: return "Daily Chart";
+    }
+};
+
 const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: number): RealTimeAnalysis => {
+    // If AI returned 0 or null for price, fallback to reference
+    const finalPrice = (data.realTimePrice && data.realTimePrice > 0) ? data.realTimePrice : realTimePrice;
+
     // Basic defaults if AI fails to return some fields
     const defaultData: RealTimeAnalysis = {
         signal: SignalType.NEUTRAL,
         winRate: 50,
         historicalWinRate: 50,
-        entryPrice: realTimePrice,
-        takeProfit: realTimePrice * 1.01,
-        stopLoss: realTimePrice * 0.99,
-        supportLevel: realTimePrice * 0.98,
-        resistanceLevel: realTimePrice * 1.02,
+        entryPrice: finalPrice,
+        entryStrategy: "观望 (Wait)", // Default strategy
+        takeProfit: finalPrice * 1.01,
+        stopLoss: finalPrice * 0.99,
+        supportLevel: finalPrice * 0.98,
+        resistanceLevel: finalPrice * 1.02,
         riskRewardRatio: 1.5,
         reasoning: "Data analysis incomplete. Displaying price anchor defaults.",
         volatilityAssessment: "Moderate",
@@ -198,26 +238,28 @@ const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: num
         marketStructure: "Ranging/Consolidation",
         keyFactors: ["Price Anchor"],
         kLineTrend: "Neutral consolidation detected.",
+        trendResonance: "分析不足 (Insufficient Data)", // NEW Default
         guruInsights: [],
         deepSeekReasoning: "DeepSeek 逻辑推演:\n> 等待数据输入...\n> 逻辑验证挂起...",
         modelFusionConfidence: 50,
         futurePrediction: {
-            targetHigh: realTimePrice * 1.01,
-            targetLow: realTimePrice * 0.99,
+            targetHigh: finalPrice * 1.01,
+            targetLow: finalPrice * 0.99,
             confidence: 50,
             predictionPeriod: getPredictionHorizon(timeframe)
         },
-        realTimePrice: realTimePrice
+        realTimePrice: finalPrice
     };
 
-    return { ...defaultData, ...data, realTimePrice }; // Override defaults with whatever valid data came back
+    return { ...defaultData, ...data, realTimePrice: finalPrice }; 
 };
 
-export const analyzeMarketData = async (symbol: string, timeframe: Timeframe): Promise<RealTimeAnalysis> => {
+export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, referencePrice: number): Promise<RealTimeAnalysis> => {
   const ai = initAI();
   if (!ai) throw new Error("API Key not configured");
 
   const horizon = getPredictionHorizon(timeframe);
+  const higherTF = getHigherTimeframe(timeframe);
 
   // INSTITUTIONAL ANALYSIS PROTOCOL PROMPT
   const systemInstruction = `
@@ -235,55 +277,71 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe): P
   const prompt = `
     EXECUTE INSTITUTIONAL PROTOCOL FOR: ${symbol} (${timeframe})
     PREDICTION HORIZON: ${horizon}
+    
+    *** CRITICAL: PRICE ANCHOR PROTOCOL ***
+    1. Search for the LIVE REAL-TIME PRICE of ${symbol}.
+    2. If Google Search fails or returns old data, use this REFERENCE PRICE: ${referencePrice}.
+    3. ALL CALCULATIONS (Entry, TP, SL, Support, Resistance) MUST be mathematically relative to the final "Price Anchor" you decide on.
+    4. DO NOT hallucinate prices. If ${symbol} is trading at 100, do not predict 2000.
 
-    PHASE 1: DATA CLEANING & CONTEXT (Use Google Search)
-    - Search for the REAL-TIME PRICE of ${symbol}. This is the "Price Anchor". All levels must be relative to this.
-    - Search for specific chart patterns on ${timeframe} (e.g., "15m chart ${symbol} analysis").
-    - Search for Breaking News/Catalysts affecting the asset today.
+    PHASE 1: GLOBAL INTELLIGENCE MINING (Wide Mining & Refining)
+    - Search for the REAL-TIME PRICE of ${symbol}.
+    - Search for Chart Patterns on BOTH:
+      1. Current Timeframe: ${timeframe} (Execution)
+      2. Higher Timeframe: ${higherTF} (Trend Bias)
+    - Mining: Scan Macro, Sector, and Asset-specific news.
+    - Distillation: Filter out noise. Keep only TOP 3 DIRECT CATALYSTS.
 
-    PHASE 2: MARKET STRUCTURE MAPPING
-    - Identify the structure: Bullish (Higher Highs/Lows), Bearish (Lower Highs/Lows), or Ranging.
-    - Identify Key Institutional Levels: Support (Demand Zone) and Resistance (Supply Zone).
-    - Identify the specific Strategy Pattern (e.g., "Wyckoff Spring", "EMA20 Bounce").
+    PHASE 2: MARKET STRUCTURE MAPPING & MTF RESONANCE (Critical)
+    - Identify Structure on ${timeframe}: HH/HL (Bull) or LH/LL (Bear).
+    - Identify Structure on ${higherTF}: Is the major trend alignment with the minor trend?
+    - **MTF RESONANCE RULE**: 
+      - IF ${higherTF} is Bullish AND ${timeframe} is Bullish -> STRONG BUY SIGNAL.
+      - IF ${higherTF} is Bearish AND ${timeframe} is Bullish -> WEAK/COUNTER-TREND (Reduce Win Rate).
+      - Output the status in "trendResonance" field (e.g., "H4 Bull + 15m Bull = Full Resonance").
 
-    PHASE 3: DEEPSEEK RED TEAMING (LOGIC STRESS TEST)
-    - SIMULATE DeepSeek R1: Act as a harsh critic. Try to debunk the Bullish/Bearish thesis.
-    - Look for traps: Bull Traps, Bear Traps, Fakeouts.
-    - Output this debate in the "deepSeekReasoning" field (Terminal style text in CHINESE).
-    - Start the text with "DeepSeek R1 逻辑推演:"
+    PHASE 3: DEEPSEEK RED TEAMING (LOGIC STRESS TEST & REPAIR)
+    - SIMULATE DeepSeek R1: Act as a harsh critic.
+    - LOOP:
+      1. Gemini proposes a plan (e.g. Buy @ X).
+      2. DeepSeek attacks it (e.g. "Too close to resistance").
+      3. Gemini *MODIFIES* the plan based on the attack (e.g. "Lower TP to Y").
+    - Output the final refined logic in "deepSeekReasoning".
 
-    PHASE 4: RISK MODELING (ATR Based)
-    - Calculate Entry, Take Profit, and Stop Loss using volatility (ATR logic).
-    - Ensure Risk/Reward is > 1.5.
-    - Stop Loss must be placed at invalidation points (below support/above resistance).
+    PHASE 4: RISK MODELING & EXECUTION
+    - Phase 4.1 ENTRY STRATEGY: 
+      - Determine: "现价进场 (Market)", "回调做多 (Limit Buy)", "反弹做空 (Limit Sell)", or "突破进场 (Stop Entry)".
+      - Note: If resonance is weak, strictly suggest "Wait for Pullback".
+    - Phase 4.2 RISK CALCULATION (ATR Based):
+      - Calculate Entry, Take Profit, and Stop Loss using volatility.
+      - Ensure Risk/Reward is > 1.5.
 
-    PHASE 5: COUNCIL OF MASTERS
-    - Simulate: Jesse Livermore (Trend), George Soros (Reflexivity), Warren Buffett (Value), Jim Simons (Quant).
-    - Get their verdict (看多/看空/观望) and a short quote.
+    PHASE 5: COUNCIL OF MASTERS (Dynamic)
+    - For ${timeframe} (Short-term), use: ICT (Smart Money), Steve Cohen (Tape Reading), Al Brooks (Price Action), Jim Simons (Quant).
+    - For ${timeframe} (Long-term > H4), use: Livermore, Soros, Buffett.
 
     RETURN JSON STRUCTURE (Mandatory Fields):
     {
       "signal": "BUY" | "SELL" | "NEUTRAL",
-      "realTimePrice": number, (The price you found)
-      "winRate": number, (0-100, be conservative)
-      "historicalWinRate": number, (Estimated win rate of this specific pattern historically)
-      "entryPrice": number,
+      "realTimePrice": number, 
+      "winRate": number, (0-100, Penalize if MTF Resonance is weak)
+      "historicalWinRate": number, 
+      "entryPrice": number, 
+      "entryStrategy": "String description (e.g. '回调至 Support 做多')",
       "takeProfit": number,
       "stopLoss": number,
-      "supportLevel": number, (Key Support)
-      "resistanceLevel": number, (Key Resistance)
+      "supportLevel": number,
+      "resistanceLevel": number,
       "riskRewardRatio": number,
       "reasoning": "Synthesized conclusion in Chinese...",
       "volatilityAssessment": "High" | "Moderate" | "Low",
-      "strategyMatch": "Strategy Name (e.g. Golden Cross)",
-      "marketStructure": "Bullish Structure" | "Bearish Structure" | "Ranging" | "Breakout",
+      "strategyMatch": "Strategy Name (e.g. ICT Order Block)",
+      "marketStructure": "Bullish Structure" | "Bearish Structure" | "Ranging",
       "keyFactors": ["Factor 1", "Factor 2", ...],
       "kLineTrend": "Description of K-line behavior in Chinese",
-      "guruInsights": [
-         { "name": "Jesse Livermore", "style": "Trend Follower", "verdict": "看多", "quote": "..." },
-         ... other gurus
-      ],
-      "deepSeekReasoning": "DeepSeek R1 逻辑推演:\n> 正在分析市场结构...\n> 检测到潜在弱点...\n> 最终结论: ...",
+      "trendResonance": "String description of Multi-Timeframe status", 
+      "guruInsights": [ ... ],
+      "deepSeekReasoning": "DeepSeek R1 逻辑推演:\n> 趋势共振检查: ...\n> 逻辑漏洞修正: ...\n> 最终结论: ...",
       "modelFusionConfidence": number, (0-100),
       "futurePrediction": {
          "targetHigh": number,
@@ -318,7 +376,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe): P
     // Attempt 1: Gemini 3 Pro with Search
     const response = await runAnalysis('gemini-3-pro-preview', true);
     const data = cleanAndParseJSON(response.text || "{}");
-    return validateAndFillData(data, timeframe, data.realTimePrice || 0);
+    return validateAndFillData(data, timeframe, data.realTimePrice || referencePrice);
 
   } catch (error: any) {
     console.warn("Primary Analysis Failed. Retrying with Fallback...", error.message);
@@ -338,7 +396,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe): P
         
         const response = await runAnalysis(modelToUse, !disableSearch);
         const data = cleanAndParseJSON(response.text || "{}");
-        return validateAndFillData(data, timeframe, data.realTimePrice || 0);
+        return validateAndFillData(data, timeframe, data.realTimePrice || referencePrice);
 
     } catch (fallbackError: any) {
         console.error("All Analysis attempts failed.", fallbackError);
@@ -357,7 +415,8 @@ export const performBacktest = async (
 ): Promise<BacktestResult> => {
   const ai = initAI();
   if (!ai) throw new Error("API Key not configured");
-
+  
+  // Backtest Prompt remains focused on strategy simulation
   const prompt = `
     Role: Senior Quantitative Researcher.
     Task: Perform a historical backtest simulation for ${symbol}.

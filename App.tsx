@@ -36,7 +36,8 @@ const App: React.FC = () => {
     
     try {
       // Call AI to get Real-Time Analysis via Google Search
-      const result: RealTimeAnalysis = await analyzeMarketData(selectedSymbol.symbol, selectedTimeframe);
+      // Pass the current known price as a Reference Anchor
+      const result: RealTimeAnalysis = await analyzeMarketData(selectedSymbol.symbol, selectedTimeframe, currentPrice);
       
       // Update State with Analysis
       setAnalysis(result);
@@ -52,7 +53,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSymbol.symbol, selectedTimeframe]);
+  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice]);
 
   // Effect: When Symbol or Timeframe changes, reset Analysis completely
   // because the old analysis is irrelevant to the new context.

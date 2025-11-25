@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -90,10 +90,10 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
         </div>
         <h3 className="text-xl font-bold text-white mt-6 mb-2">执行机构级分析协议...</h3>
         <p className="text-gray-400 text-center max-w-xs text-xs space-y-2 font-mono">
-          <span className="flex items-center gap-2 justify-center text-blue-400"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> PHASE 1: 数据清洗 (Data Cleaning)</span>
-          <span className="flex items-center gap-2 justify-center text-yellow-400"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> PHASE 2: 市场结构 (Market Structure)</span>
-          <span className="flex items-center gap-2 justify-center text-purple-400"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> PHASE 3: 逻辑对抗 (Red Teaming)</span>
-          <span className="flex items-center gap-2 justify-center text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> PHASE 4: 风险建模 (Risk Modeling)</span>
+          <span className="flex items-center gap-2 justify-center text-blue-400"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 全网资讯广搜与精炼 (Wide Mining & Refining)</span>
+          <span className="flex items-center gap-2 justify-center text-yellow-400"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> 市场结构 & 趋势共振 (MTF Resonance)</span>
+          <span className="flex items-center gap-2 justify-center text-purple-400"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> 逻辑对抗 (Red Teaming)</span>
+          <span className="flex items-center gap-2 justify-center text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 风险建模 (Risk Modeling)</span>
         </p>
       </div>
     );
@@ -249,6 +249,17 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
           </div>
         </div>
 
+        {/* --- NEW: TREND RESONANCE BAR --- */}
+        {analysis.trendResonance && (
+          <div className="mb-4 z-10 flex items-center gap-2 bg-blue-500/5 border border-blue-500/10 px-3 py-2 rounded-lg">
+             <GitMerge className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+             <div className="flex flex-col w-full">
+                <span className="text-[9px] text-blue-400 uppercase font-bold">趋势共振 (MTF Resonance)</span>
+                <span className="text-xs text-blue-200 font-medium truncate">{analysis.trendResonance}</span>
+             </div>
+          </div>
+        )}
+
         {/* --- LOGIC CORE: DEEPSEEK TERMINAL --- */}
         <div className="mb-4 z-10 group relative">
             <div className="flex items-center justify-between mb-1.5 px-1">
@@ -268,6 +279,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
 
         {/* --- EXECUTION: LEVELS & FUTURE --- */}
         <div className="grid grid-cols-2 gap-3 mb-4 z-10">
+          
           {/* Market Context / Key Levels */}
           <div className="col-span-2 grid grid-cols-2 gap-3 bg-[#0b1215] p-2.5 rounded-lg border border-gray-800">
              <div className="flex flex-col border-r border-gray-800 pr-2">
@@ -286,6 +298,21 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     {formatCurrency(analysis.supportLevel || 0)}
                  </span>
              </div>
+          </div>
+
+          {/* New Entry Strategy Card */}
+          <div className="col-span-2 bg-blue-500/5 p-2.5 rounded-lg border border-blue-500/10 hover:bg-blue-500/10 transition-colors flex items-center justify-between">
+            <div className="flex flex-col">
+                <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase mb-1">
+                    <Navigation className="w-3 h-3" /> 建议入场 (Entry)
+                </div>
+                <div className="text-xs font-mono font-medium text-blue-200">
+                    {analysis.entryStrategy || "等待信号 (Wait)"}
+                </div>
+            </div>
+            <div className="text-lg font-mono font-bold text-white">
+                {formatCurrency(analysis.entryPrice)}
+            </div>
           </div>
 
           <div className="bg-green-500/5 p-2.5 rounded-lg border border-green-500/10 hover:bg-green-500/10 transition-colors">
