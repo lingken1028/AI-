@@ -1,0 +1,5 @@
+{
+  "name": "AI股市",
+  "description": "A professional-grade stock analysis assistant. It utilizes the latest Google Gemini 3 Pro AI with real-time internet search to predict win rates, analyze live news, and calculate precise Take Profit and Stop Loss levels based on current market volatility.",
+  "requestFramePermissions": []
+}
