@@ -1,5 +1,4 @@
 
-
 export enum Timeframe {
   M1 = '1m',
   M3 = '3m',
@@ -50,6 +49,14 @@ export interface MarketRegime {
 export interface RiskManagement {
     trailingStop: string;
     scalingStrategy: string;
+}
+
+export interface StrategyItem {
+  id: string;
+  name: string;
+  description: string;
+  winRate: string;
+  promptContent: string;
 }
 
 export interface AIAnalysis {

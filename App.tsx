@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, Clock, RefreshCcw, Menu, Search, TrendingUp, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, RotateCcw } from 'lucide-react';
+import { Activity, Clock, RefreshCcw, Menu, Search, TrendingUp, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, RotateCcw, Sliders } from 'lucide-react';
 import StockChart from './components/StockChart';
 import AnalysisCard from './components/AnalysisCard';
 import BacktestModal from './components/BacktestModal';
@@ -133,8 +134,12 @@ const App: React.FC = () => {
           }
       }
 
-      // Step 1: Analyze using the anchor price
-      const result: RealTimeAnalysis = await analyzeMarketData(selectedSymbol.symbol, selectedTimeframe, analysisAnchorPrice);
+      // Step 1: Analyze using the anchor price AND ALL strategies (Auto)
+      const result: RealTimeAnalysis = await analyzeMarketData(
+          selectedSymbol.symbol, 
+          selectedTimeframe, 
+          analysisAnchorPrice
+      );
       
       setAnalysis(result);
       if(result.realTimePrice) {
