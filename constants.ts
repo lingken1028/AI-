@@ -14,78 +14,70 @@ export const DEFAULT_WATCHLIST: StockSymbol[] = [
   { symbol: 'NASDAQ:COIN', name: 'Coinbase Global', currentPrice: 250.00 },
 ];
 
+// OPTIMIZED STRATEGY PLAYBOOK
 export const STRATEGIES: StrategyItem[] = [
   {
-    id: 'ict_smc',
-    name: 'ICT / SMC (聪明钱概念)',
-    description: '追踪机构订单流：流动性猎杀 (Sweep)、订单块 (OB) 和 失衡区 (FVG)。',
-    winRate: '80%+',
+    id: 'ict_silver_bullet',
+    name: 'ICT Silver Bullet (聪明钱)',
+    description: '基于特定的纽约/伦敦交易时间窗口，寻找流动性猎杀后的 FVG (Fair Value Gap) 回补。',
+    winRate: '85%',
     promptContent: `
-      [SMC / SMART MONEY MODELS - TREND & ENTRY]
-      MODEL 1: CLASSIC SWEEP (猎杀+反转)
-      - Logic: Liquidity Sweep (High/Low) -> Market Structure Shift (MSS) -> Return to Order Block (OB) / FVG.
-      - Invalidation: Price closes beyond the Sweep wick.
-      MODEL 2: INDUCEMENT TRAP (诱多诱空)
-      - Logic: Wait for 'Inducement' (Internal Liquidity) to be swept before entering at Extreme OB.
-      - Invalidation: Candle body close below the OB.
-      MODEL 3: OTE (最佳入场点)
-      - Logic: Fib retracement 0.62-0.79 overlapping with a Key Level.
+      STRATEGY: ICT SILVER BULLET
+      - Core Logic: Wait for a Liquidity Sweep (High/Low) followed by a Displacement (MSS).
+      - Entry: Retracement into the FVG (Fair Value Gap).
+      - Context: Best used during 10AM-11AM EST (NY Session).
+      - Confirmation: DXY correlation divergence.
     `
   },
   {
-    id: 'turtle_soup',
-    name: 'Linda Raschke: Turtle Soup (海龟汤)',
-    description: '反直觉逆势策略。专门猎杀突破失败的交易者（假突破）。',
+    id: 'vwap_reversion',
+    name: 'VWAP Institutional (均值回归)',
+    description: '机构算法策略。当价格过度偏离 VWAP 标准差通道时进行反向交易，或在 VWAP 测试时顺势。',
+    winRate: '78%',
+    promptContent: `
+      STRATEGY: VWAP MEAN REVERSION
+      - Core Logic: Price moves too far from average (2.5 SD Bands) tend to snap back.
+      - Bullish: Price reclaims VWAP from below with volume.
+      - Bearish: Price fails at VWAP or extends to +3SD.
+      - Key: Monitor Institutional Volume Profile.
+    `
+  },
+  {
+    id: 'wyckoff_structure',
+    name: 'Wyckoff Spring (威科夫)',
+    description: '识别吸筹区间的"弹簧效应" (Spring) 或派发区间的"上冲回落" (Upthrust)。',
     winRate: '75%',
     promptContent: `
-      [LINDA RASCHKE MODEL - MEAN REVERSION]
-      MODEL: TURTLE SOUP (False Breakout)
-      - Setup: Price makes a new 20-period High (or Low).
-      - Trigger: Price fails to hold the breakout and reverses back into the previous range within 1-2 candles.
-      - Invalidation: Price closes strongly outside the range with volume.
-      - Psychology: Traps breakout traders (Liquidity Engineers).
+      STRATEGY: WYCKOFF EVENTS
+      - Setup: Lateral trading range.
+      - Spring (Bullish): Price dips below Support, traps bears, and aggressively reclaims the range.
+      - Upthrust (Bearish): Price pokes above Resistance, traps bulls, and falls back in.
+      - Volume: High volume on the trap, low volume on the test.
     `
   },
   {
-    id: 'minervini_vcp',
-    name: 'Mark Minervini: VCP (波动率收缩)',
-    description: '动量爆发策略。寻找价格波动幅度逐渐收窄（收敛）的形态，捕捉主升浪。',
-    winRate: '70%+',
+    id: 'gamma_squeeze',
+    name: 'Gamma Squeeze (期权博弈)',
+    description: '针对美股/Crypto。做市商为了对冲看涨期权风险被迫买入正股，导致价格螺旋上升。',
+    winRate: 'High Risk/Reward',
     promptContent: `
-      [MARK MINERVINI MODEL - MOMENTUM BREAKOUT]
-      MODEL: MICRO-VCP (Volatility Contraction Pattern)
-      - Setup: Price consolidates in a series of smaller and smaller contractions (e.g., 10% -> 5% -> 2%).
-      - Volume: MUST dry up significantly during the tightest contraction.
-      - Trigger: Explosive breakout with huge volume spike.
-      - Invalidation: Breakout fails and closes back inside the base (Squat).
+      STRATEGY: GAMMA SQUEEZE
+      - Core Logic: High Call Open Interest (OI) at strikes above current price.
+      - Trigger: Price approaches "Gamma Flip" level.
+      - Indicator: Rising IV (Implied Volatility) + Aggressive Call Buying.
+      - Behavior: Parabolic moves with little pullback.
     `
   },
   {
-    id: 'wyckoff_vsa',
-    name: 'Wyckoff VSA (量价分析)',
-    description: '通过分析成交量与K线幅度的关系（努力 vs 结果）来验证趋势。',
-    winRate: '65-70%',
+    id: 'dragon_return',
+    name: 'Dragon Return (龙头反包)',
+    description: 'A股/游资专用。强势龙头股在首次分歧下跌（首阴）次日，资金强力修复反包。',
+    winRate: '65% (High Alpha)',
     promptContent: `
-      [WYCKOFF VSA MODEL - VALIDATION]
-      MODEL: EFFORT vs RESULT
-      - Bullish Sign: "Stopping Volume" (Huge volume, small bearish body) or "No Supply" (Pullback with tiny volume).
-      - Bearish Sign: "Upthrust" (False breakout with high volume) or "Buying Climax".
-      - Logic: Identify where the "Composite Man" is accumulating or distributing.
-    `
-  },
-  {
-    id: 'harmonic_patterns',
-    name: 'Harmonic Patterns (谐波形态)',
-    description: '基于斐波那契数列的数学几何形态 (Gartley, Bat, Butterfly)。',
-    winRate: '70%',
-    promptContent: `
-      [HARMONIC ALGORITHMS - GEOMETRIC REVERSAL]
-      MODEL: GARTLEY / BAT / BUTTERFLY
-      - Setup: Identify specific XABCD geometric structures using Fibonacci ratios.
-      - Bullish Gartley: Completion at 78.6% Retracement of XA.
-      - Bearish Bat: Completion at 88.6% Retracement of XA.
-      - Trigger: Price Reversal Zone (PRZ) reaction.
-      - Invalidation: Price breaks beyond point X.
+      STRATEGY: DRAGON RETURN (A-Share/Crypto Meme)
+      - Setup: Market Leader (Leading Sector) drops sharply (First Red Day).
+      - Trigger: Next day opens low but sustains bid, rapidly crossing yesterday's close.
+      - Logic: "Hot Money" (Youzi) returns to support the trend leader.
     `
   }
 ];
@@ -102,7 +94,6 @@ export const TIMEFRAMES = [
   Timeframe.D1
 ];
 
-// Formatting helper
 export const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

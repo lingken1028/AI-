@@ -32,7 +32,6 @@ const StockChart: React.FC<StockChartProps> = ({ symbol, timeframe, onRefreshPri
     if (!currentContainer) return;
 
     // Small timeout to allow React to flush render before injecting script
-    // This helps avoid the "contentWindow" error race condition
     const timer = setTimeout(() => {
         if (!currentContainer || hasInjected.current) return;
 
@@ -73,6 +72,7 @@ const StockChart: React.FC<StockChartProps> = ({ symbol, timeframe, onRefreshPri
           "save_image": false,
           "calendar": false,
           "hide_volume": false,
+          "backgroundColor": "#151c24", // Match app panel color
           "support_host": "https://www.tradingview.com"
         });
 
@@ -82,14 +82,12 @@ const StockChart: React.FC<StockChartProps> = ({ symbol, timeframe, onRefreshPri
 
     return () => {
         clearTimeout(timer);
-        // We do NOT clear innerHTML here to prevent "contentWindow" error.
-        // We let React's 'key' prop handle the DOM node destruction.
         hasInjected.current = false;
     };
   }, [symbol, timeframe]);
 
   return (
-    <div className="w-full h-[500px] bg-trade-panel rounded-xl border border-gray-800 overflow-hidden shadow-lg relative group flex flex-col">
+    <div className="w-full h-[500px] bg-[#151c24] rounded-xl border border-gray-800 overflow-hidden shadow-xl relative group flex flex-col hover:border-gray-600 transition-all duration-300">
       
       {/* TradingView Widget Container */}
       <div 
@@ -103,15 +101,15 @@ const StockChart: React.FC<StockChartProps> = ({ symbol, timeframe, onRefreshPri
       {/* Delayed Market Warning Overlay */}
       {isDelayedMarket && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-             <div className="bg-yellow-900/80 backdrop-blur border border-yellow-600/50 px-4 py-2 rounded-lg text-xs text-yellow-200 text-center shadow-xl pointer-events-auto">
-                <p className="font-bold mb-1">⚠️ A股/港股数据延迟 (Delayed)</p>
-                <p className="opacity-80 mb-2">AI 分析会强制检索最新实时报价。</p>
+             <div className="bg-yellow-900/90 backdrop-blur border border-yellow-600/50 px-4 py-2 rounded-lg text-xs text-yellow-100 text-center shadow-2xl pointer-events-auto">
+                <p className="font-bold mb-1 flex items-center gap-2 justify-center"><Activity className="w-3 h-3"/> 数据延迟 (Delayed)</p>
+                <p className="opacity-80 mb-2 font-mono text-[10px]">AI 使用实时接口报价</p>
                 {onRefreshPrice && (
                     <button 
                         onClick={onRefreshPrice}
-                        className="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 mx-auto text-[10px] font-bold transition-colors"
+                        className="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1.5 rounded-md flex items-center gap-1.5 mx-auto text-[10px] font-bold transition-all shadow-md active:scale-95"
                     >
-                        <RefreshCw className="w-3 h-3" /> 点击刷新 AI 锚定价格
+                        <RefreshCw className="w-3 h-3" /> 强制刷新报价
                     </button>
                 )}
              </div>

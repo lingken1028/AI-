@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, Clock, RefreshCcw, Menu, Search, TrendingUp, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, RotateCcw, Sliders } from 'lucide-react';
+import { Activity, Clock, Menu, Search, TrendingUp, TrendingDown, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, Navigation, Target, ShieldAlert, Layers, Lock, Unlock, HelpCircle } from 'lucide-react';
 import StockChart from './components/StockChart';
 import AnalysisCard from './components/AnalysisCard';
 import BacktestModal from './components/BacktestModal';
@@ -9,7 +8,7 @@ import { TIMEFRAMES, formatCurrency, DEFAULT_WATCHLIST } from './constants';
 import { analyzeMarketData, lookupStockSymbol } from './services/geminiService';
 
 const App: React.FC = () => {
-  // Changed initial state to false (Hidden by default)
+  // Initial state is false (Hidden by default)
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -57,13 +56,13 @@ const App: React.FC = () => {
     setIsPriceManuallySet(false); // Reset lock on stock switch
   }, [selectedSymbol]);
 
-  // NEW: Silent Price Auto-Refresh Interval (Every 60s)
+  // NEW: Silent Price Auto-Refresh Interval (Optimized to 15s for Live Feel)
   useEffect(() => {
     const intervalId = setInterval(() => {
         if (!isPriceManuallySet && !isEditingPrice) {
             refreshPriceSilent();
         }
-    }, 60000); // 60 seconds
+    }, 15000); // 15 seconds
 
     return () => clearInterval(intervalId);
   }, [selectedSymbol, isPriceManuallySet, isEditingPrice]);
@@ -88,7 +87,12 @@ const App: React.FC = () => {
       setSelectedSymbol(stock);
       setCurrentPrice(stock.currentPrice); 
       setIsPriceManuallySet(false); // Reset lock
-      setSidebarOpen(false);
+      setAnalysis(null); // Clear old analysis
+      
+      // On Mobile, close sidebar on select. On Desktop, keep it open IF it was open.
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
 
       // 2. Background Refresh (Silent)
       try {
@@ -116,9 +120,13 @@ const App: React.FC = () => {
     let analysisAnchorPrice = currentPrice;
 
     try {
-      // Step 0: Auto-Refresh Price if NOT manually set by user AND not just refreshed
-      // Note: handleStockSelect already tries to refresh, but if user clicks Analyze immediately, we double check.
-      if (!isPriceManuallySet) {
+      // Step 0: Logic for Price Source
+      if (isPriceManuallySet) {
+          console.log("Using LOCKED price for analysis:", currentPrice);
+          // If locked, we DO NOT fetch fresh data. We use the locked price.
+          analysisAnchorPrice = currentPrice;
+      } else {
+          // If NOT locked, try to get the very latest price before analysis
           try {
              const freshData = await lookupStockSymbol(selectedSymbol.symbol);
              if (freshData && freshData.currentPrice > 0) {
@@ -134,7 +142,7 @@ const App: React.FC = () => {
           }
       }
 
-      // Step 1: Analyze using the anchor price AND ALL strategies (Auto)
+      // Step 1: Analyze using the anchor price
       const result: RealTimeAnalysis = await analyzeMarketData(
           selectedSymbol.symbol, 
           selectedTimeframe, 
@@ -142,9 +150,12 @@ const App: React.FC = () => {
       );
       
       setAnalysis(result);
-      if(result.realTimePrice) {
+      
+      // ONLY update the display price from AI result if NOT locked
+      if (!isPriceManuallySet && result.realTimePrice) {
           setCurrentPrice(result.realTimePrice);
       }
+      
       setLastUpdated(new Date());
 
     } catch (e: any) {
@@ -181,7 +192,10 @@ const App: React.FC = () => {
         handleStockSelect(foundStock);
         
         setSearchQuery('');
-        setSidebarOpen(false); 
+        // Do not close sidebar on search for desktop convenience, maybe close on mobile?
+        if (window.innerWidth < 1024) {
+            setSidebarOpen(false); 
+        }
         
     } catch (error) {
         console.error("Search failed:", error);
@@ -239,12 +253,17 @@ const App: React.FC = () => {
     setIsEditingPrice(false);
   };
 
+  const handleUnlockPrice = () => {
+      setIsPriceManuallySet(false);
+      refreshPriceSilent(); // Trigger immediate refresh
+  };
+
   const cancelEditPrice = () => {
     setIsEditingPrice(false);
   };
 
   return (
-    <div className="flex h-screen bg-trade-bg text-trade-text font-sans overflow-hidden">
+    <div className="flex h-screen bg-[#0b1215] text-[#eceff1] font-sans overflow-hidden selection:bg-blue-500/30">
       
       <BacktestModal 
         isOpen={isBacktestOpen} 
@@ -254,175 +273,198 @@ const App: React.FC = () => {
 
       <aside 
         className={`
-          fixed inset-y-0 left-0 z-50 w-64 bg-[#0b1215] border-r border-gray-800 transform transition-transform duration-300 ease-in-out
+          fixed inset-y-0 left-0 z-[60] w-72 bg-[#0b1215] border-r border-gray-800 
+          transform transition-transform duration-300 ease-in-out 
+          flex flex-col shadow-2xl
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:fixed lg:translate-x-0 lg:w-64 flex flex-col shadow-2xl
-          ${!sidebarOpen && 'lg:hidden'} 
         `}
-        style={{ display: sidebarOpen ? 'flex' : 'none' }}
       >
-        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-          <div className="flex items-center gap-2 font-bold text-white">
-            <Activity className="text-trade-accent" />
-            <span>TradeGuard Pro</span>
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between shrink-0 bg-gradient-to-r from-blue-900/10 to-transparent">
+          <div className="flex items-center gap-3 font-bold text-white tracking-wide">
+            <div className="p-1.5 bg-blue-600 rounded-lg shadow-lg shadow-blue-500/20">
+                <Activity className="text-white w-5 h-5" />
+            </div>
+            <span>TradeGuard <span className="text-blue-500">Pro</span></span>
           </div>
-          <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white">
+          <button onClick={() => setSidebarOpen(false)} className="text-gray-400 hover:text-white p-1 rounded-md hover:bg-gray-800 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         <div className="p-4 flex-1 flex flex-col min-h-0">
-          <form onSubmit={handleSearch} className="relative mb-6 flex-shrink-0">
+          <form onSubmit={handleSearch} className="relative mb-6 flex-shrink-0 group">
+            <div className="absolute inset-0 bg-blue-500/5 rounded-xl blur-sm group-hover:bg-blue-500/10 transition-colors"></div>
             <input 
               type="text" 
-              placeholder="搜索 (如 Apple, 0700)" 
+              placeholder="搜索股票 (如 Apple, 0700)" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               disabled={isSearching}
-              className="w-full bg-trade-panel border border-gray-700 rounded-lg py-2 pl-10 pr-4 text-sm focus:outline-none focus:border-trade-accent text-white placeholder-gray-500 disabled:opacity-50"
+              className="relative w-full bg-[#151c24] border border-gray-700 rounded-xl py-3 pl-11 pr-10 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 text-white placeholder-gray-500 transition-all shadow-inner"
             />
-            <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-500" />
+            <Search className="absolute left-3.5 top-3.5 w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors z-10" />
             <button 
                 type="submit" 
                 disabled={isSearching}
-                className="absolute right-2 top-2 p-0.5 bg-gray-700 rounded hover:bg-trade-accent transition-colors disabled:opacity-50"
+                className="absolute right-2 top-2 p-1.5 bg-gray-700 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 z-10"
             >
-                {isSearching ? <Loader2 className="w-4 h-4 text-white animate-spin" /> : <Plus className="w-4 h-4 text-white" />}
+                {isSearching ? <Loader2 className="w-3.5 h-3.5 text-white animate-spin" /> : <Plus className="w-3.5 h-3.5 text-white" />}
             </button>
           </form>
 
-          <div className="flex items-center justify-between mb-3 px-1 flex-shrink-0">
-            <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider">自选股列表</h3>
-            <span className="text-[10px] text-gray-600">{watchlist.length} 个标的</span>
+          <div className="flex items-center justify-between mb-3 px-2 flex-shrink-0">
+            <h3 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> 自选列表
+            </h3>
+            <span className="text-[9px] bg-gray-800 text-gray-400 px-1.5 py-0.5 rounded border border-gray-700">{watchlist.length}</span>
           </div>
 
-          <div className="space-y-1 overflow-y-auto custom-scrollbar flex-1 pr-1">
+          <div className="space-y-1.5 overflow-y-auto custom-scrollbar flex-1 pr-1 pb-4">
             {watchlist.map((stock, index) => (
               <div
                 key={stock.symbol}
                 onClick={() => handleStockSelect(stock)}
                 className={`
-                  group w-full flex items-center justify-between p-3 rounded-lg text-left transition-all cursor-pointer border border-transparent
+                  group w-full flex items-center justify-between p-3 rounded-xl text-left transition-all cursor-pointer border
                   ${selectedSymbol.symbol === stock.symbol 
-                    ? 'bg-trade-accent/10 border-trade-accent/50 text-white' 
-                    : 'hover:bg-trade-panel text-gray-300 border-transparent'}
+                    ? 'bg-blue-600/10 border-blue-500/50 text-white shadow-[0_0_15px_rgba(37,99,235,0.1)]' 
+                    : 'bg-[#1a232e] border-gray-800/50 hover:border-gray-700 text-gray-300 hover:bg-[#202b38]'}
                 `}
               >
                 <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={`p-1.5 rounded-full ${selectedSymbol.symbol === stock.symbol ? 'bg-trade-accent' : 'bg-gray-800'}`}>
-                        <TrendingUp className="w-3.5 h-3.5 text-white" />
+                    <div className={`
+                        w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 transition-colors
+                        ${selectedSymbol.symbol === stock.symbol ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-800 text-gray-500 group-hover:text-gray-300'}
+                    `}>
+                        {stock.symbol.split(':')[1]?.substring(0, 1) || stock.symbol.substring(0, 1)}
                     </div>
-                    <div className="min-w-0">
-                        <div className="font-bold text-sm truncate">{stock.symbol.split(':')[1] || stock.symbol}</div>
-                        <div className="text-[10px] opacity-60 truncate max-w-[90px]">{stock.name}</div>
+                    <div className="min-w-0 flex-1">
+                        <div className="font-bold text-sm truncate tracking-tight">{stock.symbol.split(':')[1] || stock.symbol}</div>
+                        <div className="text-[10px] opacity-60 truncate max-w-[120px] font-medium">{stock.name}</div>
                     </div>
                 </div>
                 
                 {/* Action Buttons: Show on Hover */}
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="flex flex-col">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity translate-x-2 group-hover:translate-x-0 duration-200">
+                    <div className="flex flex-col gap-0.5">
                         <button 
                             onClick={(e) => moveStock(e, index, 'up')}
                             disabled={index === 0}
-                            className="p-0.5 hover:text-white text-gray-500 disabled:opacity-30"
+                            className="p-0.5 hover:text-white text-gray-600 disabled:opacity-0 transition-colors"
                         >
                             <ChevronUp className="w-3 h-3" />
                         </button>
                         <button 
                             onClick={(e) => moveStock(e, index, 'down')}
                             disabled={index === watchlist.length - 1}
-                            className="p-0.5 hover:text-white text-gray-500 disabled:opacity-30"
+                            className="p-0.5 hover:text-white text-gray-600 disabled:opacity-0 transition-colors"
                         >
                             <ChevronDown className="w-3 h-3" />
                         </button>
                     </div>
                     <button 
                         onClick={(e) => removeStock(e, stock.symbol)}
-                        className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-400 hover:text-red-400 ml-1 transition-colors"
+                        className="p-1.5 rounded-lg bg-gray-800 hover:bg-red-500/20 text-gray-500 hover:text-red-400 ml-1 transition-colors"
                         title="删除"
                     >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                     </button>
                 </div>
               </div>
             ))}
             
             {watchlist.length === 0 && (
-                <div className="text-center py-8 text-gray-500 text-xs">
-                    暂无自选股。<br/>请使用搜索添加股票。
+                <div className="flex flex-col items-center justify-center py-12 text-gray-600 gap-2 border-2 border-dashed border-gray-800 rounded-xl bg-[#151c24]/50">
+                    <Search className="w-8 h-8 opacity-20" />
+                    <span className="text-xs font-medium">暂无自选股</span>
                 </div>
             )}
           </div>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative w-full transition-all duration-300">
+      <div className={`flex-1 flex flex-col h-screen overflow-hidden relative w-full transition-all duration-300 ${sidebarOpen ? 'lg:pl-72' : ''}`}>
         
-        <header className="h-16 border-b border-gray-800 bg-[#0b1215]/95 backdrop-blur flex items-center justify-between px-4 lg:px-6 shrink-0 z-40">
+        {/* Top Navigation */}
+        <header className="h-16 border-b border-gray-800 bg-[#0b1215]/90 backdrop-blur-md flex items-center justify-between px-4 lg:px-8 shrink-0 z-40 sticky top-0">
           <div className="flex items-center gap-4">
              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
                 <Menu className="w-6 h-6" />
               </button>
-            <div>
-              <h1 className="text-xl font-black text-white flex items-center gap-2">
+            <div className="flex flex-col">
+                <h1 className="text-xl font-black text-white flex items-center gap-2 tracking-tight">
                 {selectedSymbol.symbol.split(':')[1] || selectedSymbol.symbol}
-                <span className="text-sm font-normal text-gray-500 hidden sm:inline-block">{selectedSymbol.name}</span>
-              </h1>
+                <span className="px-2 py-0.5 bg-gray-800 rounded-md text-[10px] font-bold text-gray-400 border border-gray-700 hidden sm:inline-block">
+                    {selectedSymbol.symbol.split(':')[0] || 'US'}
+                </span>
+                </h1>
+                <span className="text-xs text-gray-500 font-medium hidden sm:inline-block">{selectedSymbol.name}</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-             {/* Removed 'hidden sm:block' to make visible on mobile. Added responsive text. */}
+          <div className="flex items-center gap-6">
+             {/* Anchor Price Display */}
              <div className="text-right">
-                <div className="text-[10px] text-gray-400 uppercase mb-0.5 flex items-center justify-end gap-1">
-                    <span className="hidden sm:inline">AI 分析锚定价格 (Anchor Price)</span>
-                    <span className="sm:hidden">Anchor</span>
+                <div className="text-[9px] text-gray-500 uppercase font-bold mb-0.5 flex items-center justify-end gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${isPriceManuallySet ? 'bg-orange-500' : 'bg-blue-500 animate-pulse'}`}></span>
+                    <span className="hidden sm:inline tracking-wider">
+                        {isPriceManuallySet ? "手动锁定 (LOCKED)" : "AI 实时锚定"}
+                    </span>
+                    <span className="sm:hidden">{isPriceManuallySet ? "LOCK" : "LIVE"}</span>
                     
-                    {!isEditingPrice && (
-                      <button onClick={startEditingPrice} className="text-gray-500 hover:text-trade-accent transition-colors" title="手动校准价格">
-                        <Edit2 className="w-3 h-3" />
-                      </button>
+                    {!isEditingPrice && !isPriceManuallySet && (
+                      <button onClick={startEditingPrice} className="text-gray-600 hover:text-blue-400 transition-colors p-0.5" title="手动校准"><Edit2 className="w-2.5 h-2.5" /></button>
                     )}
-                    {isPriceManuallySet && <span className="text-[9px] text-green-500 font-bold bg-green-500/10 px-1 rounded">LOCKED</span>}
+                    {isPriceManuallySet && (
+                        <button onClick={handleUnlockPrice} className="flex items-center gap-1 text-[8px] text-orange-400 bg-orange-900/20 px-1.5 py-px rounded border border-orange-500/30 hover:bg-orange-900/40 transition-colors">
+                             <Unlock className="w-2 h-2" /> 解锁
+                        </button>
+                    )}
                 </div>
                 
                 {isEditingPrice ? (
-                  <div className="flex items-center gap-2 justify-end">
+                  <div className="flex items-center gap-2 justify-end animate-in fade-in slide-in-from-right-2 duration-200">
                     <input 
                       ref={priceInputRef}
                       type="number" 
                       value={tempPriceInput}
                       onChange={(e) => setTempPriceInput(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && savePrice()}
-                      className="w-20 bg-gray-800 border border-trade-accent rounded px-2 py-0.5 text-sm text-white font-mono focus:outline-none"
+                      className="w-24 bg-gray-900 border border-blue-500 rounded-md px-2 py-1 text-sm text-white font-mono focus:outline-none shadow-lg"
                     />
-                    <button onClick={savePrice} className="text-green-500 hover:text-green-400"><Check className="w-4 h-4" /></button>
-                    <button onClick={cancelEditPrice} className="text-red-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                    <button onClick={savePrice} className="p-1 bg-green-600/20 text-green-400 rounded hover:bg-green-600/40"><Check className="w-4 h-4" /></button>
+                    <button onClick={cancelEditPrice} className="p-1 bg-red-600/20 text-red-400 rounded hover:bg-red-600/40"><X className="w-4 h-4" /></button>
                   </div>
                 ) : (
-                  <div className="text-lg font-mono font-medium text-white cursor-pointer hover:text-trade-accent/80 transition-colors" onClick={startEditingPrice} title="点击校准">
+                  <div 
+                    className={`text-xl font-mono font-bold cursor-pointer transition-colors flex items-center gap-2 justify-end group ${isPriceManuallySet ? 'text-orange-400' : 'text-white hover:text-blue-400'}`}
+                    onClick={!isPriceManuallySet ? startEditingPrice : undefined}
+                    title={isPriceManuallySet ? "价格已锁定，分析将基于此价格" : "点击手动校准价格"}
+                  >
+                    {isPriceManuallySet && <Lock className="w-3 h-3 opacity-50" />}
                     {currentPrice ? formatCurrency(currentPrice) : '---'}
+                    <span className="text-xs text-gray-600 font-normal group-hover:text-blue-500/50 opacity-0 group-hover:opacity-100 transition-all">USD</span>
                   </div>
                 )}
              </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 scroll-smooth">
-          <div className="max-w-7xl mx-auto">
+        <main className="flex-1 overflow-y-auto p-4 lg:p-8 pb-24 scroll-smooth">
+          <div className="max-w-[1600px] mx-auto">
             
+            {/* Toolbar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              
-              <div className="flex flex-wrap gap-1 bg-trade-panel p-1 rounded-lg border border-gray-800 w-fit">
+              <div className="flex flex-wrap gap-1 bg-[#151c24] p-1.5 rounded-xl border border-gray-800 shadow-sm w-fit">
                 {TIMEFRAMES.map((tf) => (
                   <button
                     key={tf}
                     onClick={() => setSelectedTimeframe(tf)}
                     className={`
-                      px-3 py-1.5 rounded text-xs font-bold transition-all
+                      px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
                       ${selectedTimeframe === tf 
-                        ? 'bg-trade-accent text-white shadow-lg' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                        ? 'bg-blue-600 text-white shadow-md' 
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                       }
                     `}
                   >
@@ -434,22 +476,23 @@ const App: React.FC = () => {
               <div className="flex items-center gap-3">
                  <button 
                     onClick={() => setIsBacktestOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-xs font-bold rounded-lg border border-purple-500/30 transition-all hover:scale-105"
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold rounded-lg border border-purple-500/20 transition-all hover:scale-105 active:scale-95"
                  >
                     <BarChart2 className="w-4 h-4" />
                     <span>策略历史回测</span>
                  </button>
 
-                 <div className="flex items-center gap-3 text-xs text-gray-400 bg-trade-panel px-3 py-2 rounded-lg border border-gray-800 hidden md:flex">
+                 <div className="flex items-center gap-2 text-[10px] font-mono text-gray-500 bg-[#151c24] px-3 py-2 rounded-lg border border-gray-800 hidden md:flex">
                     <Clock className="w-3 h-3" />
-                    <span>更新: {lastUpdated.toLocaleTimeString()}</span>
+                    <span>更新时间: {lastUpdated.toLocaleTimeString()}</span>
                  </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               
-              <div className="lg:col-span-2 flex flex-col gap-6">
+              {/* Left Column: Chart & Stats */}
+              <div className="xl:col-span-2 flex flex-col gap-6">
                 <StockChart 
                     symbol={selectedSymbol.symbol} 
                     timeframe={selectedTimeframe} 
@@ -457,14 +500,37 @@ const App: React.FC = () => {
                 />
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                   <StatCard label="关键阻力 (Res)" value={analysis ? formatCurrency(analysis.resistanceLevel || 0) : '---'} color="text-red-400" />
-                   <StatCard label="关键支撑 (Sup)" value={analysis ? formatCurrency(analysis.supportLevel || 0) : '---'} color="text-green-400" />
-                   <StatCard label="历史胜率" value={analysis ? `${analysis.historicalWinRate}%` : '---'} color="text-blue-400" />
-                   <StatCard label="严谨胜率" value={analysis ? `${analysis.winRate}%` : '---'} color="text-yellow-400" />
+                   <StatCard 
+                        label="关键阻力 (Resistance)" 
+                        value={analysis ? formatCurrency(analysis.resistanceLevel || 0) : '---'} 
+                        color="text-red-400" 
+                        icon={<TrendingUp className="w-3 h-3"/>} 
+                   />
+                   <StatCard 
+                        label="关键支撑 (Support)" 
+                        value={analysis ? formatCurrency(analysis.supportLevel || 0) : '---'} 
+                        color="text-green-400" 
+                        icon={<TrendingDown className="w-3 h-3"/>} 
+                   />
+                   <StatCard 
+                        label="历史回测胜率 (Backtest)" 
+                        value={analysis ? `${analysis.historicalWinRate}%` : '---'} 
+                        color="text-blue-400" 
+                        icon={<Activity className="w-3 h-3"/>}
+                        tooltip="基于过去 5 年类似技术形态（如双底、突破）的统计概率。并非对未来的承诺。"
+                   />
+                   <StatCard 
+                        label="AI 预测胜率 (Prob.)" 
+                        value={analysis ? `${analysis.winRate}%` : '---'} 
+                        color="text-yellow-400" 
+                        icon={<Target className="w-3 h-3"/>}
+                        tooltip="实时综合评判：融合资金流向、红队压力测试及市场情绪的胜算估值。"
+                   />
                 </div>
               </div>
 
-              <div className="lg:col-span-1 min-h-[500px]">
+              {/* Right Column: AI Analysis */}
+              <div className="xl:col-span-1 min-h-[600px]">
                 <AnalysisCard 
                   analysis={analysis} 
                   loading={isLoading} 
@@ -476,11 +542,15 @@ const App: React.FC = () => {
 
             </div>
 
-             <div className="mt-8 text-center border-t border-gray-800 pt-6">
-              <p className="text-xs text-gray-500">
-                图表数据由 TradingView 提供。分析报告由 Gemini 3 Pro (数据) + DeepSeek R1 (逻辑) 双核架构生成。
-                <br />
-                DeepSeek R1 逻辑为模拟推演 (Red Teaming)，仅供参考，交易前请务必自行验证。
+             <div className="mt-12 text-center border-t border-gray-800 pt-8 pb-4">
+              <p className="text-xs text-gray-500 flex items-center justify-center gap-2 mb-2">
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 px-2 py-0.5 rounded text-[9px] font-bold text-white shadow-lg shadow-blue-900/20">v3.2 LIVE</span>
+                <span>
+                    驱动引擎 <strong className="text-gray-300">Gemini 3 Pro (Thinking)</strong>
+                </span>
+              </p>
+              <p className="text-[10px] text-gray-600">
+                Gemini Critic 逻辑为模拟红队推演 (Red Teaming)，仅供参考，交易前请务必自行验证。
               </p>
             </div>
           </div>
@@ -490,10 +560,21 @@ const App: React.FC = () => {
   );
 };
 
-const StatCard = ({ label, value, color }: { label: string, value: string, color: string }) => (
-  <div className="bg-trade-panel p-4 rounded-xl border border-gray-800 hover:bg-[#1a232e] transition-colors">
-    <div className="text-[10px] uppercase font-bold text-gray-500 mb-1">{label}</div>
-    <div className={`text-lg font-mono font-medium ${color}`}>{value}</div>
+const StatCard = ({ label, value, color, icon, tooltip }: { label: string, value: string, color: string, icon: React.ReactNode, tooltip?: string }) => (
+  <div className="bg-[#151c24] p-5 rounded-xl border border-gray-800 hover:border-gray-700 transition-all hover:shadow-lg group relative cursor-default">
+    <div className="text-[10px] uppercase font-bold text-gray-500 mb-2 flex items-center gap-2">
+        <span className="p-1 bg-gray-800 rounded group-hover:bg-gray-700 transition-colors">{icon}</span>
+        {label}
+        {tooltip && <HelpCircle className="w-3 h-3 text-gray-600 hover:text-white cursor-help ml-auto" />}
+    </div>
+    <div className={`text-2xl font-mono font-medium tracking-tight ${color}`}>{value}</div>
+    
+    {/* Tooltip */}
+    {tooltip && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 border border-gray-700 text-[10px] text-gray-300 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 leading-relaxed">
+            {tooltip}
+        </div>
+    )}
   </div>
 );
 

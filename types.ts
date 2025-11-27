@@ -11,15 +11,6 @@ export enum Timeframe {
   D1 = '1d'
 }
 
-export interface CandleData {
-  time: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
-}
-
 export enum SignalType {
   BUY = 'BUY',
   SELL = 'SELL',
@@ -95,18 +86,16 @@ export interface StockSymbol {
   currentPrice: number;
 }
 
-// Backtesting Types
+// Backtesting Types - OPTIMIZED STRATEGIES
 export enum BacktestStrategy {
-  MACD_GOLDEN_CROSS = "MACD 金叉/死叉",
-  RSI_REVERSAL = "RSI 超买/超卖反转",
-  BOLLINGER_BREAKOUT = "布林带突破",
-  TURTLE_TRADING = "海龟交易法则 (20日突破)",
-  ICT_SMC = "ICT/SMC 聪明钱 (订单块+流动性)",
-  STEVE_COHEN = "Steve Cohen 盘口量价爆发",
-  AL_BROOKS = "Al Brooks 裸K价格行为 (PA)",
-  LINDA_RASCHKE_TURTLE_SOUP = "Linda Raschke 'Turtle Soup' (假突破反杀)",
-  MINERVINI_VCP = "Mark Minervini 'VCP' (波动率收缩突破)",
-  WYCKOFF_VSA = "Wyckoff VSA (量价得失分析)"
+  ICT_SILVER_BULLET = "ICT Silver Bullet (聪明钱时间窗)",
+  VWAP_MEAN_REVERSION = "VWAP Institutional Reversion (机构均值回归)",
+  WYCKOFF_SPRING = "Wyckoff Spring/Upthrust (威科夫操盘法)",
+  GAMMA_SQUEEZE = "Gamma Squeeze (期权伽马挤压)",
+  DRAGON_RETURN = "Dragon Return (龙头首阴/反包)",
+  SUPPLY_DEMAND_FLIP = "S/D Zone Flip (供需互换)",
+  TURTLE_SOUP_PLUS = "Turtle Soup Plus (增强版海龟汤)",
+  VOLATILITY_CONTRACTION = "VCP (波动率收缩突破)"
 }
 
 export enum BacktestPeriod {
