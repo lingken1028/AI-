@@ -47,6 +47,11 @@ export interface MarketRegime {
     institutionalAction: 'Accumulation (吸筹)' | 'Distribution (派发)' | 'Neutral (观望)';
 }
 
+export interface RiskManagement {
+    trailingStop: string;
+    scalingStrategy: string;
+}
+
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
@@ -66,12 +71,13 @@ export interface AIAnalysis {
   keyFactors: string[]; 
   kLineTrend: string; 
   trendResonance: string; 
-  marketRegime?: MarketRegime; // NEW: Global Situational Awareness
+  marketRegime?: MarketRegime; 
   confidenceDrivers: string[]; 
   guruInsights: GuruInsight[]; 
   redTeamingLogic: string; 
   modelFusionConfidence: number; 
   futurePrediction?: FuturePrediction; 
+  riskManagement?: RiskManagement;
 }
 
 export type RealTimeAnalysis = AIAnalysis;
@@ -87,11 +93,13 @@ export enum BacktestStrategy {
   MACD_GOLDEN_CROSS = "MACD 金叉/死叉",
   RSI_REVERSAL = "RSI 超买/超卖反转",
   BOLLINGER_BREAKOUT = "布林带突破",
-  MA_CROSSOVER = "均线交叉 (MA5/MA20)",
   TURTLE_TRADING = "海龟交易法则 (20日突破)",
   ICT_SMC = "ICT/SMC 聪明钱 (订单块+流动性)",
   STEVE_COHEN = "Steve Cohen 盘口量价爆发",
-  AL_BROOKS = "Al Brooks 裸K价格行为 (PA)"
+  AL_BROOKS = "Al Brooks 裸K价格行为 (PA)",
+  LINDA_RASCHKE_TURTLE_SOUP = "Linda Raschke 'Turtle Soup' (假突破反杀)",
+  MINERVINI_VCP = "Mark Minervini 'VCP' (波动率收缩突破)",
+  WYCKOFF_VSA = "Wyckoff VSA (量价得失分析)"
 }
 
 export enum BacktestPeriod {

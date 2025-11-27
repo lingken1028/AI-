@@ -12,79 +12,32 @@ interface StockChartProps {
 const StockChart: React.FC<StockChartProps> = ({ symbol, timeframe, onRefreshPrice }) => {
   const container = useRef<HTMLDivElement>(null);
   const [isDelayedMarket, setIsDelayedMarket] = useState(false);
-  const [useRealTimeSource, setUseRealTimeSource] = useState(false); // Toggle for Sina Chart
-  const [sinaUrl, setSinaUrl] = useState('');
-  const [timestamp, setTimestamp] = useState(Date.now()); // Force refresh image
+  
+  // Use a ref to track if script is already appended for this symbol/timeframe combo
+  const hasInjected = useRef(false);
 
   // Detect Market Type
   useEffect(() => {
       const checkDelayed = symbol.startsWith('SSE') || symbol.startsWith('SZSE') || symbol.startsWith('HKEX');
       setIsDelayedMarket(checkDelayed);
-      // Default to RealTime Source for A-Shares if user selects short timeframe
-      if (checkDelayed && (timeframe === Timeframe.M1 || timeframe === Timeframe.M5 || timeframe === Timeframe.M15)) {
-          setUseRealTimeSource(true);
-      } else {
-          setUseRealTimeSource(false);
-      }
-  }, [symbol, timeframe]);
+  }, [symbol]);
 
-  // Construct Sina Finance Image URL (The "No Delay" Hack)
+  // TradingView Widget Logic with cleanup
   useEffect(() => {
-      if (!isDelayedMarket) return;
-
-      // Convert TradingView symbol (SSE:600519) to Sina symbol (sh600519)
-      let sinaSymbol = '';
-      const cleanCode = symbol.split(':')[1];
-      
-      if (symbol.startsWith('SSE')) sinaSymbol = `sh${cleanCode}`;
-      else if (symbol.startsWith('SZSE')) sinaSymbol = `sz${cleanCode}`;
-      else if (symbol.startsWith('HKEX')) sinaSymbol = `hk${cleanCode}`;
-      else return;
-
-      // Map timeframe to Sina chart types
-      let type = 'min'; 
-      switch (timeframe) {
-          case Timeframe.M1:
-          case Timeframe.M3:
-          case Timeframe.M5: 
-          case Timeframe.M15:
-          case Timeframe.M30:
-            type = 'min'; 
-            break;
-          case Timeframe.H1:
-          case Timeframe.H2:
-          case Timeframe.H4:
-          case Timeframe.D1:
-            type = 'daily';
-            break;
-      }
-
-      setSinaUrl(`http://image.sinajs.cn/newchart/${type}/n/${sinaSymbol}.gif`);
-
-  }, [symbol, timeframe, isDelayedMarket]);
-
-  // Force refresh image every 30s
-  useEffect(() => {
-      if (!useRealTimeSource) return;
-      const interval = setInterval(() => {
-          setTimestamp(Date.now());
-      }, 30000); 
-      return () => clearInterval(interval);
-  }, [useRealTimeSource]);
-
-
-  // TradingView Widget Logic with Debounce
-  useEffect(() => {
-    if (useRealTimeSource) return; 
-
-    // Capture the current ref to use in cleanup
+    // Reset injection flag when deps change
+    hasInjected.current = false; 
+    
     const currentContainer = container.current;
-    let timer: ReturnType<typeof setTimeout>;
+    
+    if (!currentContainer) return;
 
-    const loadWidget = () => {
-        if (!currentContainer) return;
+    // Small timeout to allow React to flush render before injecting script
+    // This helps avoid the "contentWindow" error race condition
+    const timer = setTimeout(() => {
+        if (!currentContainer || hasInjected.current) return;
 
-        currentContainer.innerHTML = ''; // Clear existing
+        // Clean any existing children manually just in case
+        currentContainer.innerHTML = ''; 
 
         const script = document.createElement('script');
         script.src = "https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js";
@@ -124,82 +77,41 @@ const StockChart: React.FC<StockChartProps> = ({ symbol, timeframe, onRefreshPri
         });
 
         currentContainer.appendChild(script);
-    };
-
-    // Delay widget loading slightly to prevent race conditions during rapid switching
-    // This fixes the "Cannot listen to the event from the provided iframe" error
-    timer = setTimeout(loadWidget, 100);
+        hasInjected.current = true;
+    }, 50);
 
     return () => {
         clearTimeout(timer);
-        if (currentContainer) {
-            currentContainer.innerHTML = '';
-        }
+        // We do NOT clear innerHTML here to prevent "contentWindow" error.
+        // We let React's 'key' prop handle the DOM node destruction.
+        hasInjected.current = false;
     };
-  }, [symbol, timeframe, useRealTimeSource]);
+  }, [symbol, timeframe]);
 
   return (
     <div className="w-full h-[500px] bg-trade-panel rounded-xl border border-gray-800 overflow-hidden shadow-lg relative group flex flex-col">
       
-      {/* Switcher Tab for A-Shares */}
-      {isDelayedMarket && (
-          <div className="absolute top-3 left-3 z-30 flex bg-black/50 backdrop-blur rounded-lg border border-gray-700 p-1">
-              <button 
-                onClick={() => setUseRealTimeSource(false)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-[10px] font-bold transition-all ${!useRealTimeSource ? 'bg-gray-700 text-white' : 'text-gray-400 hover:text-white'}`}
-              >
-                  <Layers className="w-3 h-3" /> 交互图 (延迟)
-              </button>
-              <button 
-                onClick={() => setUseRealTimeSource(true)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded text-[10px] font-bold transition-all ${useRealTimeSource ? 'bg-trade-accent text-white shadow' : 'text-gray-400 hover:text-white'}`}
-              >
-                  <Zap className="w-3 h-3" /> 极速实盘 (Sina)
-              </button>
-          </div>
-      )}
-
-      {/* Mode A: Sina Real-Time Image */}
-      {useRealTimeSource && isDelayedMarket ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-[#101014] relative">
-               {sinaUrl ? (
-                   <>
-                    <img 
-                        src={`${sinaUrl}?t=${timestamp}`} 
-                        alt="Real Time Chart" 
-                        className="max-w-full max-h-full object-contain p-4 mix-blend-screen opacity-90"
-                    />
-                    <div className="absolute bottom-4 right-4 text-[10px] text-gray-500 font-mono bg-black/60 px-2 py-1 rounded">
-                        数据源: 新浪财经 (无延迟) | {new Date(timestamp).toLocaleTimeString()} 自动刷新
-                    </div>
-                   </>
-               ) : (
-                   <div className="text-gray-500 text-xs">无法加载实时图表</div>
-               )}
-          </div>
-      ) : (
-          /* Mode B: TradingView Widget */
-          <div 
-            className="tradingview-widget-container h-full w-full flex-1" 
-            ref={container}
-            key={`${symbol}-${timeframe}`} // Force re-mount on change
-          >
-             <div className="tradingview-widget-container__widget h-full w-full"></div>
-          </div>
-      )}
+      {/* TradingView Widget Container */}
+      <div 
+        className="tradingview-widget-container h-full w-full flex-1" 
+        ref={container}
+        key={`${symbol}-${timeframe}`} // Crucial: Force full unmount/remount by React
+      >
+         <div className="tradingview-widget-container__widget h-full w-full"></div>
+      </div>
       
-      {/* Delayed Market Warning Overlay (Only show in TV mode) */}
-      {isDelayedMarket && !useRealTimeSource && (
+      {/* Delayed Market Warning Overlay */}
+      {isDelayedMarket && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
              <div className="bg-yellow-900/80 backdrop-blur border border-yellow-600/50 px-4 py-2 rounded-lg text-xs text-yellow-200 text-center shadow-xl pointer-events-auto">
-                <p className="font-bold mb-1">⚠️ 当前查看的是延迟数据</p>
-                <p className="opacity-80 mb-2">建议切换左上角“极速实盘”查看最新走势。</p>
+                <p className="font-bold mb-1">⚠️ A股/港股数据延迟 (Delayed)</p>
+                <p className="opacity-80 mb-2">AI 分析会强制检索最新实时报价。</p>
                 {onRefreshPrice && (
                     <button 
                         onClick={onRefreshPrice}
                         className="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1 rounded flex items-center gap-1 mx-auto text-[10px] font-bold transition-colors"
                     >
-                        <RefreshCw className="w-3 h-3" /> 刷新最新价
+                        <RefreshCw className="w-3 h-3" /> 点击刷新 AI 锚定价格
                     </button>
                 )}
              </div>

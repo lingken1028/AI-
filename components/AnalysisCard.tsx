@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -111,6 +111,78 @@ const getVerdictStyle = (verdict: string) => {
     return 'bg-gray-800 text-gray-400 border border-gray-700';
 };
 
+const ThreatReport = ({ logic }: { logic: string }) => {
+    // Enhanced parser to handle both English and Chinese headers
+    // The AI might translate headers despite instructions
+    let threatPart = "";
+    let mitigationPart = "";
+
+    // Normalize potential headers
+    const raw = logic || "";
+    
+    // Split logic
+    // Try English first
+    if (raw.includes('🛡️ MITIGATIONS:')) {
+        const parts = raw.split('🛡️ MITIGATIONS:');
+        threatPart = parts[0]?.replace('⚠️ VULNERABILITIES:', '').trim();
+        mitigationPart = parts[1]?.trim();
+    } 
+    // Try Chinese fallback
+    else if (raw.includes('🛡️ 缓解措施:') || raw.includes('🛡️ 应对策略:')) {
+        const parts = raw.split(/🛡️ (缓解措施|应对策略):/); // Regex split
+        threatPart = parts[0]?.replace(/⚠️ (脆弱性|风险点|隐患):/, '').trim();
+        mitigationPart = parts[parts.length - 1]?.trim();
+    }
+    else {
+        // Fallback: Just show raw if structure is lost
+        threatPart = raw;
+        mitigationPart = "";
+    }
+
+    const threats = threatPart.split('\n').filter(t => t.trim().length > 0 && t.trim() !== '-');
+    const mitigations = mitigationPart.split('\n').filter(m => m.trim().length > 0 && m.trim() !== '-');
+
+    if (threats.length === 0 && mitigations.length === 0) {
+        return <div className="text-[10px] text-gray-500 italic p-2">无详细红队报告 (No Report)</div>;
+    }
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
+            <div className="bg-red-500/5 rounded-lg border border-red-500/10 p-2.5">
+                <div className="flex items-center gap-2 mb-2 border-b border-red-500/10 pb-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-[10px] font-bold text-red-200 uppercase">风险点 (Vulnerabilities)</span>
+                </div>
+                <ul className="space-y-1">
+                    {threats.map((t, i) => (
+                        <li key={i} className="text-[10px] text-red-300/80 flex items-start gap-1.5 leading-relaxed">
+                            <span className="mt-1 w-1 h-1 rounded-full bg-red-500 shrink-0"></span>
+                            {t.replace(/^- /, '')}
+                        </li>
+                    ))}
+                </ul>
+            </div>
+
+            {mitigations.length > 0 && (
+                <div className="bg-blue-500/5 rounded-lg border border-blue-500/10 p-2.5">
+                    <div className="flex items-center gap-2 mb-2 border-b border-blue-500/10 pb-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
+                        <span className="text-[10px] font-bold text-blue-200 uppercase">应对措施 (Mitigations)</span>
+                    </div>
+                    <ul className="space-y-1">
+                        {mitigations.map((m, i) => (
+                            <li key={i} className="text-[10px] text-blue-300/80 flex items-start gap-1.5 leading-relaxed">
+                                <span className="mt-1 w-1 h-1 rounded-full bg-blue-500 shrink-0"></span>
+                                {m.replace(/^- /, '')}
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+        </div>
+    );
+};
+
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, onAnalyze, symbol }) => {
   const isInitialLoading = loading && !analysis;
   const isRefreshing = loading && !!analysis;
@@ -200,7 +272,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     </div>
                  </div>
                  <div className="text-[9px] font-medium text-red-300 bg-red-500/10 px-2 py-1 rounded border border-red-500/20 uppercase tracking-wide">
-                    红队风控 (Critic/Red Team)
+                    红队风控 (Critic)
                  </div>
              </div>
         </div>
@@ -355,7 +427,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                      </div>
                      <div className="flex flex-col">
                         <span className="text-red-100 text-[10px] font-bold uppercase">Gemini 3 Pro (Critic)</span>
-                        <span className="text-[9px] text-red-400/60 font-mono">Red Teaming Protocol</span>
+                        <span className="text-[9px] text-red-400/60 font-mono">Red Teaming Report</span>
                      </div>
                 </div>
                 
@@ -369,10 +441,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                 </div>
             </div>
             
-            <div className="bg-[#0f111a] p-3 rounded-lg border border-red-500/20 font-mono text-[10px] text-red-200/90 leading-relaxed shadow-inner overflow-hidden relative min-h-[60px]">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-500/0 via-red-500/50 to-red-500/0"></div>
-                <Typewriter text={analysis.redTeamingLogic} speed={10} />
-            </div>
+            <ThreatReport logic={analysis.redTeamingLogic} />
         </div>
 
         {/* --- ZONE 5: EXECUTION MAP --- */}
@@ -411,6 +480,20 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     <div className="text-base font-mono font-bold text-white">{formatCurrency(analysis.stopLoss)}</div>
                 </div>
             </div>
+            
+            {/* Dynamic Risk Management */}
+            {analysis.riskManagement && (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-purple-500/5 p-2 rounded-lg border border-purple-500/10">
+                        <div className="text-[9px] text-purple-400 font-bold uppercase mb-0.5">动态止损 (Trailing)</div>
+                        <div className="text-[10px] text-purple-200">{analysis.riskManagement.trailingStop}</div>
+                    </div>
+                    <div className="bg-purple-500/5 p-2 rounded-lg border border-purple-500/10">
+                        <div className="text-[9px] text-purple-400 font-bold uppercase mb-0.5">分批策略 (Scaling)</div>
+                        <div className="text-[10px] text-purple-200">{analysis.riskManagement.scalingStrategy}</div>
+                    </div>
+                </div>
+            )}
 
             {/* Key Levels & Future */}
             <div className="grid grid-cols-2 gap-3">

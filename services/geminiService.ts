@@ -75,23 +75,23 @@ const generateFallbackGurus = (signal: SignalType, structure: string, timeframe:
          if (isBuy) {
             return [
                 { name: "ICT (SMC)", style: "Smart Money", verdict: "看多", quote: "回踩 FVG (失衡区) 叠加 Bullish Order Block，流动性掠夺完成。" },
-                { name: "Steve Cohen", style: "Tape Reading", verdict: "看多", quote: "买盘挂单厚重，主动性买入激增，成交量异动确认。" },
-                { name: "Al Brooks", style: "Price Action", verdict: "看多", quote: "H1 强势趋势中的 M5 二次突破 (H2)，K线实体饱满。" },
-                { name: "Jim Simons", style: "Quant", verdict: "看多", quote: "高频均值回归模型信号触发，胜率 > 68%。" }
+                { name: "Linda Raschke", style: "Turtle Soup", verdict: "看多", quote: "价格假跌破前低 (L20) 后迅速拉回，典型的 '海龟汤' 底部反转信号。" },
+                { name: "Mark Minervini", style: "VCP Breakout", verdict: "看多", quote: "波动率极致收缩，右侧放量突破 Pivot Point，主升浪启动。" },
+                { name: "Al Brooks", style: "Price Action", verdict: "看多", quote: "H1 强势趋势中的 M5 二次突破 (H2)，K线实体饱满。" }
             ];
         } else if (isSell) {
             return [
                 { name: "ICT (SMC)", style: "Smart Money", verdict: "看空", quote: "价格进入 Bearish Breaker，上方 Buy-side Liquidity 已被扫除。" },
+                { name: "Linda Raschke", style: "Turtle Soup", verdict: "看空", quote: "假突破前高 (H20) 失败，形成 'Turtle Soup Plus' 顶部结构，做空。" },
                 { name: "Steve Cohen", style: "Tape Reading", verdict: "看空", quote: "大单抛售出现，上方压单密集，Bid 端撤单明显。" },
-                { name: "Al Brooks", style: "Price Action", verdict: "看空", quote: "连续三根阴线跌破前期低点 (L2)，楔形反转确认。" },
                 { name: "Jim Simons", style: "Quant", verdict: "看空", quote: "动量因子衰竭，统计套利模型提示反转做空。" }
             ];
         } else {
              return [
-                { name: "ICT (SMC)", style: "Smart Money", verdict: "观望", quote: "处于均衡区间 (Equilibrium)，等待向一边扫流动性。" },
+                { name: "Mark Minervini", style: "VCP", verdict: "观望", quote: "波动率还在收缩中，尚未出现 Pocket Pivot 突破，耐心等待。" },
                 { name: "Al Brooks", style: "Price Action", verdict: "观望", quote: "K线重叠严重，典型的铁丝网震荡形态 (Barb Wire)。" },
                 { name: "Steve Cohen", style: "Tape Reading", verdict: "观望", quote: "盘口缺乏方向感，大单缺席，散户博弈为主。" },
-                { name: "Jim Simons", style: "Quant", verdict: "观望", quote: "信号噪音比过高，不建议入场。" }
+                { name: "Wyckoff", style: "VSA", verdict: "观望", quote: "无量空跌，主力没有参与，当前价格没有诚意。" }
             ];
         }
     } else {
@@ -118,6 +118,109 @@ const generateFallbackGurus = (signal: SignalType, structure: string, timeframe:
             ];
         }
     }
+};
+
+// NEW HELPER: Fetch Real-Time Price using Gemini Flash
+const fetchRealTimePrice = async (symbol: string): Promise<number | null> => {
+    const ai = initAI();
+    if (!ai) return null;
+    
+    // Simple fast prompt using Flash (Grok persona internally)
+    const prompt = `Find the CURRENT REAL-TIME live price for ${symbol}. Return ONLY the number. If found on Sina/EastMoney (A-Shares), prioritize that.`;
+    
+    try {
+         const result = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: { tools: [{ googleSearch: {} }] }
+       });
+       if(result.text) {
+           const price = parseFloat(result.text.replace(/[^0-9.]/g, ''));
+           return isNaN(price) ? null : price;
+       }
+       return null;
+    } catch (e) {
+        console.warn("Flash Price Check failed:", e);
+        return null;
+    }
+}
+
+const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: number, symbol: string): RealTimeAnalysis => {
+    const finalPrice = (data.realTimePrice && data.realTimePrice > 0) ? data.realTimePrice : realTimePrice;
+
+    let finalGurus = data.guruInsights;
+    if (!finalGurus || !Array.isArray(finalGurus) || finalGurus.length === 0) {
+        const signal = data.signal || SignalType.NEUTRAL;
+        const structure = data.marketStructure || "Ranging";
+        finalGurus = generateFallbackGurus(signal, structure, timeframe, symbol);
+    }
+
+    let finalDrivers = data.confidenceDrivers;
+    if (!finalDrivers || !Array.isArray(finalDrivers) || finalDrivers.length === 0) {
+        finalDrivers = ["Analysis Incomplete"];
+    }
+
+    // Safe handling of redTeamingLogic (Ensure string)
+    let logicBlock = "⚠️ VULNERABILITIES:\n- Data connection unstable\n\n🛡️ MITIGATIONS:\n- Wait for next cycle";
+    if (data.redTeamingLogic) {
+        if (typeof data.redTeamingLogic === 'string') {
+            logicBlock = data.redTeamingLogic;
+        } else if (typeof data.redTeamingLogic === 'object') {
+            // If AI returned structured object (rare), stringify or extract
+            logicBlock = JSON.stringify(data.redTeamingLogic);
+        }
+    } else if (data.deepSeekReasoning) {
+        logicBlock = String(data.deepSeekReasoning);
+    }
+
+    // Handle Market Regime Default
+    const defaultRegime: MarketRegime = {
+        macroTrend: 'Neutral (震荡)',
+        sectorPerformance: 'Weak (弱势)',
+        institutionalAction: 'Neutral (观望)'
+    };
+
+    const defaultData: RealTimeAnalysis = {
+        signal: SignalType.NEUTRAL,
+        winRate: 50,
+        historicalWinRate: 50,
+        entryPrice: finalPrice,
+        entryStrategy: "观望 (Wait)",
+        takeProfit: finalPrice * 1.01,
+        stopLoss: finalPrice * 0.99,
+        supportLevel: finalPrice * 0.98,
+        resistanceLevel: finalPrice * 1.02,
+        riskRewardRatio: 1.5,
+        reasoning: "Data analysis incomplete. Displaying price anchor defaults.",
+        volatilityAssessment: "Moderate",
+        strategyMatch: "Price Action",
+        marketStructure: "Ranging/Consolidation",
+        keyFactors: ["Price Anchor"],
+        kLineTrend: "Neutral consolidation detected.",
+        trendResonance: "分析不足 (Insufficient Data)",
+        marketRegime: defaultRegime,
+        confidenceDrivers: ["Anchor Price Only"],
+        guruInsights: [], 
+        redTeamingLogic: logicBlock,
+        modelFusionConfidence: 50,
+        futurePrediction: {
+            targetHigh: finalPrice * 1.01,
+            targetLow: finalPrice * 0.99,
+            confidence: 50,
+            predictionPeriod: getPredictionHorizon(timeframe)
+        },
+        realTimePrice: finalPrice
+    };
+
+    return { 
+        ...defaultData, 
+        ...data, 
+        realTimePrice: finalPrice,
+        guruInsights: finalGurus,
+        confidenceDrivers: finalDrivers,
+        redTeamingLogic: logicBlock, // Use the sanitized logic block
+        marketRegime: data.marketRegime || defaultRegime
+    }; 
 };
 
 // ... (lookupStockSymbol uses Gemini 2.5 Flash for speed)
@@ -202,8 +305,43 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
 
   } catch (error: any) {
     console.error("Symbol Lookup Error:", error);
-    if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        console.warn("Quota exceeded. Using heuristic fallback.");
+    
+    // Fallback Logic for Quota Exceeded OR AI Failure
+    const errorMessage = error.message || JSON.stringify(error);
+    const isQuotaError = errorMessage.includes('429') || 
+                         errorMessage.includes('RESOURCE_EXHAUSTED') || 
+                         errorMessage.includes('Quota exceeded');
+    
+    // Treat Empty/Invalid responses like quota errors to trigger fallback
+    const isAiFailure = errorMessage.includes('Empty response') || 
+                        errorMessage.includes('Invalid JSON') ||
+                        errorMessage.includes('SyntaxError');
+
+    if (isQuotaError || isAiFailure) {
+        console.warn("Search Quota exceeded or AI failed. Attempting AI-only lookup (no search)...");
+        try {
+            // Fallback Step 2: Ask AI without search tool to get Symbol/Name (Internal Knowledge)
+            if (!isQuotaError) { // Only try this if it wasn't a 429 error, or if it was just a tool error
+                 const responseNoSearch = await runLookup(false);
+                 if (responseNoSearch.text) {
+                      const data = cleanAndParseJSON(responseNoSearch.text);
+                      // Note: AI without search often cannot get real-time price.
+                      // We return 0 so the frontend keeps the old price or shows '---' instead of crashing.
+                      if (data.symbol && data.symbol !== "null") {
+                          return {
+                             symbol: data.symbol,
+                             name: data.name || query,
+                             currentPrice: 0 
+                          };
+                      }
+                 }
+            }
+        } catch (innerError) {
+             console.warn("AI-only lookup failed. Falling back to heuristic.");
+        }
+
+        // Fallback Step 3: Heuristic Regex Fallback
+        console.warn("Using heuristic fallback.");
         let cleanQuery = query.trim().toUpperCase();
         if (cleanQuery === 'BTC') cleanQuery = 'BINANCE:BTCUSDT';
         else if (cleanQuery === 'ETH') cleanQuery = 'BINANCE:ETHUSDT';
@@ -251,85 +389,63 @@ const getHigherTimeframe = (tf: Timeframe): string => {
     }
 };
 
-const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: number, symbol: string): RealTimeAnalysis => {
-    const finalPrice = (data.realTimePrice && data.realTimePrice > 0) ? data.realTimePrice : realTimePrice;
-
-    let finalGurus = data.guruInsights;
-    if (!finalGurus || !Array.isArray(finalGurus) || finalGurus.length === 0) {
-        const signal = data.signal || SignalType.NEUTRAL;
-        const structure = data.marketStructure || "Ranging";
-        finalGurus = generateFallbackGurus(signal, structure, timeframe, symbol);
-    }
-
-    let finalDrivers = data.confidenceDrivers;
-    if (!finalDrivers || !Array.isArray(finalDrivers) || finalDrivers.length === 0) {
-        finalDrivers = ["Analysis Incomplete"];
-    }
-
-    const logicBlock = data.redTeamingLogic || data.deepSeekReasoning || "Gemini 3 Pro (Critic) Logic:\n> 等待数据输入...\n> 逻辑验证挂起...";
-
-    // Handle Market Regime Default
-    const defaultRegime: MarketRegime = {
-        macroTrend: 'Neutral (震荡)',
-        sectorPerformance: 'Weak (弱势)',
-        institutionalAction: 'Neutral (观望)'
-    };
-
-    const defaultData: RealTimeAnalysis = {
-        signal: SignalType.NEUTRAL,
-        winRate: 50,
-        historicalWinRate: 50,
-        entryPrice: finalPrice,
-        entryStrategy: "观望 (Wait)",
-        takeProfit: finalPrice * 1.01,
-        stopLoss: finalPrice * 0.99,
-        supportLevel: finalPrice * 0.98,
-        resistanceLevel: finalPrice * 1.02,
-        riskRewardRatio: 1.5,
-        reasoning: "Data analysis incomplete. Displaying price anchor defaults.",
-        volatilityAssessment: "Moderate",
-        strategyMatch: "Price Action",
-        marketStructure: "Ranging/Consolidation",
-        keyFactors: ["Price Anchor"],
-        kLineTrend: "Neutral consolidation detected.",
-        trendResonance: "分析不足 (Insufficient Data)",
-        marketRegime: defaultRegime,
-        confidenceDrivers: ["Anchor Price Only"],
-        guruInsights: [], 
-        redTeamingLogic: logicBlock,
-        modelFusionConfidence: 50,
-        futurePrediction: {
-            targetHigh: finalPrice * 1.01,
-            targetLow: finalPrice * 0.99,
-            confidence: 50,
-            predictionPeriod: getPredictionHorizon(timeframe)
-        },
-        realTimePrice: finalPrice
-    };
-
-    return { 
-        ...defaultData, 
-        ...data, 
-        realTimePrice: finalPrice,
-        guruInsights: finalGurus,
-        confidenceDrivers: finalDrivers,
-        redTeamingLogic: logicBlock,
-        marketRegime: data.marketRegime || defaultRegime
-    }; 
-};
-
-// ... (analyzeMarketData uses Gemini 3 Pro)
+// *** CORE FUNCTION: analyzeMarketData ***
+// THIS IS THE MOST IMPORTANT PART OF THE APP.
+// MUST USE GEMINI 3 PRO (PREVIEW) FOR MAXIMUM INTELLIGENCE.
 export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, referencePrice: number): Promise<RealTimeAnalysis> => {
   const ai = initAI();
   if (!ai) throw new Error("API Key not configured");
+
+  // Double Check Price using Flash (Cheap) before burning Pro quota
+  let anchorPrice = referencePrice;
+  try {
+      const freshPrice = await fetchRealTimePrice(symbol);
+      if (freshPrice && freshPrice > 0) {
+          console.log(`Updated Anchor Price from ${referencePrice} to ${freshPrice} via Flash check.`);
+          anchorPrice = freshPrice;
+      }
+  } catch (e) {
+      console.warn("Price double-check failed, using provided reference.", e);
+  }
 
   const horizon = getPredictionHorizon(timeframe);
   const higherTF = getHigherTimeframe(timeframe);
 
   const isChinaMarket = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
   
+  // *** ELITE TACTICAL HANDBOOK (SMC + REVERSAL + MOMENTUM) ***
+  const TACTICAL_HANDBOOK = `
+      *** ELITE TACTICAL HANDBOOK (Short-Term High Win Rate Models) ***
+      Apply these models strictly in Phase 2:
+      
+      [SMC / SMART MONEY MODELS - TREND FOLLOWING]
+      MODEL 1: HTF POI + SHIFT + FVG (Classic Sweep)
+      - Condition: Liquidity Sweep -> HTF POI Tap -> MSS (Market Structure Shift) -> Return to Discount FVG.
+      - Logic: "Cleanest trend model."
+      MODEL 2: HTF POI + SHIFT + IDM + FVG (Inducement)
+      - Condition: Requires Inducement (IDM) sweep before FVG entry.
+      - Logic: "Weeds out early buyers, very robust."
+      MODEL 3: OTE (Optimal Trade Entry)
+      - Condition: Entry at Fibonacci 0.62-0.79 retracement.
+      MODEL 4: BOX SETUP (Consolidation)
+      - Condition: Sweep Box Range Liquidity (False Break) -> Reclaim -> Return to Box origin.
+      
+      [LINDA RASCHKE MODEL - REVERSAL]
+      MODEL 5: TURTLE SOUP (False Breakout Reversal)
+      - Condition: Price makes a new 20-period High/Low. Price immediately fails and reverses back into the previous range.
+      - Logic: "Traps breakout traders. High win rate in ranging markets."
+      
+      [MARK MINERVINI MODEL - MOMENTUM]
+      MODEL 6: MICRO-VCP (Volatility Contraction)
+      - Condition: Price consolidates with decreasing volatility (tightening). Volume dries up. Then explosive breakout with volume.
+      - Logic: "Catch the explosive move (Main Wave)."
+      
+      [WYCKOFF VSA MODEL - VALIDATION]
+      MODEL 7: VOLUME ANOMALY (Effort vs Result)
+      - Condition: Huge Volume but small candle body (Stopping Volume) OR No Volume on pullback (No Supply).
+  `;
+
   // *** PROTOCOL DEFINITION ***
-  // These constants define the specific rules for different markets
   const CN_PROTOCOL = `
       *** PROTOCOL: DRAGON HEART (A-SHARES) ***
       FOCUS: "Hot Money" (游资), "Northbound" (北向), "Sector Rotation" (板块).
@@ -339,7 +455,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
       2. LIMITS: Check for 10% (Main) or 20% (ChiNext) limit up/down proximity.
       3. SEARCH SOURCES (MANDATORY): "site:finance.sina.com.cn", "site:eastmoney.com".
          - Look for: "Dragon Tiger List" (龙虎榜), "Concept Hype" (概念炒作).
-      4. STRATEGIES: "Limit Up Acceleration" (打板), "Low-Suck" (低吸), "First Green Candle" (首阴).
+      4. STRATEGIES: ${TACTICAL_HANDBOOK} (Adapt to Daily timeframe), "Limit Up Acceleration" (打板), "Low-Suck" (低吸).
   `;
 
   const US_PROTOCOL = `
@@ -350,27 +466,28 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
       1. T+0 / PRE-MARKET: Intraday volatility is key. Check Pre-market volume.
       2. SEARCH SOURCES (MANDATORY): "site:cnbc.com", "site:bloomberg.com", "site:seekingalpha.com", "site:finance.sina.com.cn" (for CN sentiment).
          - Look for: "Analyst Upgrades", "Options Flow" (Call/Put Ratio), "Earnings Surprise".
-      3. STRATEGIES: "VWAP Bounce", "Opening Range Breakout (ORB)", "Supply/Demand Zones".
+      3. STRATEGIES: ${TACTICAL_HANDBOOK}, "VWAP Bounce", "Opening Range Breakout (ORB)".
   `;
   
   const marketProtocol = isChinaMarket ? CN_PROTOCOL : US_PROTOCOL;
 
   const systemInstruction = `
     You are Gemini 3 Pro, running the "Gemini Adversarial Intelligence Protocol" (Dual-Persona).
+    MODE: HIGH-COMPUTE ANALYTICAL ENGINE.
     
     PERSONAS:
-    1. CORE A (Analyst): Optimistic, looking for setups based on Algorithms & War Methods.
+    1. CORE A (Analyst): Optimistic, looks for setups based on Algorithms & War Methods (ICT, Raschke, Minervini).
     2. CORE B (Critic): Pessimistic, "Red Team" auditor. Looks for traps and macro headwinds.
     
     NO HALLUCINATION RULE:
-    - Base ALL technical findings on the reference price (${referencePrice}) and search results.
+    - Base ALL technical findings on the reference price (${anchorPrice}) and search results.
     - If data is not found, state "Unknown". Do NOT invent prices or patterns.
 
     OUTPUT: STRICT JSON. Language: CHINESE (中文).
   `;
 
   const prompt = `
-    TARGET: ${symbol} | TIMEFRAME: ${timeframe} | PRICE ANCHOR: ${referencePrice}
+    TARGET: ${symbol} | TIMEFRAME: ${timeframe} | PRICE ANCHOR: ${anchorPrice}
     ${marketProtocol}
     
     PHASE 0: SITUATIONAL AWARENESS (The Weather)
@@ -384,13 +501,24 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
 
     PHASE 2: STRUCTURE & ALGORITHMS (The Chart)
     - Identify Market Structure (HH/HL, BOS).
-    - Check Algorithms: RSI Divergence? MACD Cross? Bollinger Squeeze?
-    - Check War Methods: Does it match a specific strategy (e.g. "Golden Pit", "Bull Flag")?
+    - SCAN FOR ELITE MODELS (1-7):
+      - ICT: Sweep + MSS + FVG? (Model 1/2)
+      - Raschke: Turtle Soup (False Breakout)? (Model 5)
+      - Minervini: VCP Tightening? (Model 6)
+      - Wyckoff: Stopping Volume? (Model 7)
+    - If a specific model is found, set 'strategyMatch' to e.g. "Linda Raschke: Turtle Soup Reversal".
 
     PHASE 3: RED TEAMING (The Audit)
     - ACT AS CORE B. Attack the findings. 
-    - Is the "Breakout" actually a "Liquidity Sweep"? 
-    - Is the volume confirming the move?
+    - CRITICAL: Output the logic in a STRUCTURED Threat Report format.
+    - KEEP HEADERS ENGLISH: Use "⚠️ VULNERABILITIES" and "🛡️ MITIGATIONS" as keys, even if the content is Chinese.
+    - FORMAT:
+      ⚠️ VULNERABILITIES:
+      - Point 1
+      - Point 2
+      🛡️ MITIGATIONS:
+      - Point 1
+      - Point 2
 
     PHASE 4: SCORING (The Weighted Probability Model)
     - FORMULA: Base (50%) + Drivers - Penalties.
@@ -415,8 +543,11 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
     - Signal: BUY / SELL / NEUTRAL.
     - TIMING (Entry Strategy):
       - DO NOT just say "Buy". Say WHEN.
-      - Example: "Wait for pullback to ${referencePrice * 0.995} (EMA20)" or "Buy Stop above ${referencePrice * 1.005}".
+      - Example: "Wait for pullback to ${anchorPrice * 0.995} (EMA20)" or "Buy Stop above ${anchorPrice * 1.005}".
     - TP/SL: Calculate based on ATR/Volatility.
+    - RISK MANAGEMENT:
+      - Trailing Stop: e.g. "ATR x 1.5" or "Previous Candle Low".
+      - Scaling: e.g. "Sell 50% at TP1, hold rest."
     
     RETURN JSON (Match RealTimeAnalysis Interface):
     {
@@ -441,9 +572,10 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
       "marketRegime": { "macroTrend": "String", "sectorPerformance": "String", "institutionalAction": "String" },
       "confidenceDrivers": ["String"],
       "guruInsights": [ { "name": "String", "style": "String", "verdict": "String", "quote": "String" } ],
-      "redTeamingLogic": "String",
+      "redTeamingLogic": "String (Must contain ⚠️ VULNERABILITIES and 🛡️ MITIGATIONS sections)",
       "modelFusionConfidence": number,
-      "futurePrediction": { "targetHigh": number, "targetLow": number, "confidence": number, "predictionPeriod": "String" }
+      "futurePrediction": { "targetHigh": number, "targetLow": number, "confidence": number, "predictionPeriod": "String" },
+      "riskManagement": { "trailingStop": "String", "scalingStrategy": "String" }
     }
   `;
 
@@ -470,7 +602,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
     const response = await runAnalysis('gemini-3-pro-preview', true);
     if (!response.text) throw new Error("Empty response from Gemini Pro");
     const json = cleanAndParseJSON(response.text);
-    return validateAndFillData(json, timeframe, referencePrice, symbol);
+    return validateAndFillData(json, timeframe, anchorPrice, symbol);
   } catch (error: any) {
     console.warn("Analysis Primary Attempt Failed. Trying fallback...", error);
     const isQuotaError = error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED');
@@ -480,7 +612,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
         const fallbackResponse = await runAnalysis('gemini-2.5-flash', useSearch);
         if (!fallbackResponse.text) throw new Error("Empty response from Fallback");
         const json = cleanAndParseJSON(fallbackResponse.text);
-        return validateAndFillData(json, timeframe, referencePrice, symbol);
+        return validateAndFillData(json, timeframe, anchorPrice, symbol);
     } catch (finalError) {
         console.error("All Analysis Attempts Failed", finalError);
         throw finalError;
