@@ -1,6 +1,6 @@
 
-import { GoogleGenAI } from "@google/genai";
-import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult } from "../types";
+import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
+import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 
 const initAI = () => {
   if (!process.env.API_KEY) {
@@ -10,37 +10,24 @@ const initAI = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-// Interface for the extended response including the real price found
-export interface RealTimeAnalysis extends AIAnalysis {
-  realTimePrice: number;
-}
-
+// Helper: robust JSON parsing
 const cleanAndParseJSON = (text: string): any => {
-    // 1. Remove markdown code blocks
-    let cleanedText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    // 2. Find the first '{' and last '}' to isolate JSON
+    let cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
     const firstBrace = cleanedText.indexOf('{');
     const lastBrace = cleanedText.lastIndexOf('}');
-    
     if (firstBrace !== -1 && lastBrace !== -1) {
         cleanedText = cleanedText.substring(firstBrace, lastBrace + 1);
     }
-
-    // 3. Attempt to sanitize common issues
     try {
         return JSON.parse(cleanedText);
     } catch (e) {
         console.warn("Initial JSON Parse Failed. Attempting repair...", e);
-        
-        // Repair Strategy 1: Escape unescaped newlines inside strings
         try {
-            const fixedNewlines = cleanedText.replace(/(?<=: ")([\s\S]*?)(?=")/g, (match) => {
-                return match.replace(/\n/g, "\\n");
+            const fixedNewlines = cleanedText.replace(/(: ")([\s\S]*?)(?=")/g, (match, prefix, content) => {
+                return prefix + content.replace(/\n/g, "\\n");
             });
             return JSON.parse(fixedNewlines);
         } catch (e2) {
-             // Repair Strategy 2: Brute force strip control characters (Last Resort)
              try {
                 const sanitized = cleanedText.replace(/[\n\r\t]/g, " ");
                 return JSON.parse(sanitized);
@@ -52,40 +39,112 @@ const cleanAndParseJSON = (text: string): any => {
     }
 };
 
-/**
- * Helper to delay execution (for retries)
- */
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+// Helper: Fallback Guru Generation based on Signal & Market
+const generateFallbackGurus = (signal: SignalType, structure: string, timeframe: Timeframe, symbol: string = ""): GuruInsight[] => {
+    const isBuy = signal === SignalType.BUY;
+    const isSell = signal === SignalType.SELL;
+    const isChinaMarket = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
+    const isShortTerm = [Timeframe.M1, Timeframe.M3, Timeframe.M5, Timeframe.M15, Timeframe.M30].includes(timeframe);
 
-/**
- * Uses Gemini Flash (Fast) to search for the correct stock symbol and name.
- */
+    if (isChinaMarket) {
+        if (isBuy) {
+            return [
+                { name: "顶级游资 (Hot Money)", style: "打板/情绪", verdict: "看多", quote: "情绪一致性转强，主力资金明显扫货，龙虎榜机构席位大买。" },
+                { name: "北向资金 (Smart Money)", style: "外资流向", verdict: "看多", quote: "深股通/沪股通大幅净流入，核心资产估值修复，均线多头排列。" },
+                { name: "公募一哥 (Institution)", style: "赛道逻辑", verdict: "看多", quote: "业绩超预期，所属板块进入高景气周期，PEG合理。" },
+                { name: "量化私募 (Quant)", style: "高频策略", verdict: "看多", quote: "盘口单量因子异常活跃，动量模型评分 > 90，主力吸筹完成。" }
+            ];
+        } else if (isSell) {
+            return [
+                { name: "顶级游资 (Hot Money)", style: "打板/情绪", verdict: "看空", quote: "炸板率飙升，高位筹码松动，核按钮风险极大，建议离场。" },
+                { name: "北向资金 (Smart Money)", style: "外资流向", verdict: "看空", quote: "连续三个交易日净流出，外资正在高位兑现，规避风险。" },
+                { name: "技术派 (Technical)", style: "K线形态", verdict: "看空", quote: "跌破20日生命线，上方套牢盘压力沉重，M头形态确认。" },
+                { name: "量化私募 (Quant)", style: "高频策略", verdict: "看空", quote: "多头排列破坏，甚至出现流动性枯竭信号，触发止损风控。" }
+            ];
+        } else {
+             return [
+                { name: "顶级游资 (Hot Money)", style: "打板/情绪", verdict: "观望", quote: "市场缩量，缺乏主线题材，这就是垃圾时间，空仓保平安。" },
+                { name: "公募一哥 (Institution)", style: "基本面", verdict: "观望", quote: "业绩真空期，等待更多宏观数据落地，目前性价比不高。" },
+                { name: "北向资金", style: "外资", verdict: "观望", quote: "资金流入流出持平，缺乏方向性指引，静待变盘。" },
+                { name: "散户大本营", style: "情绪", verdict: "观望", quote: "股吧情绪低迷，没有赚钱效应，不建议出手。" }
+            ];
+        }
+    }
+
+    if (isShortTerm) {
+         if (isBuy) {
+            return [
+                { name: "ICT (SMC)", style: "Smart Money", verdict: "看多", quote: "回踩 FVG (失衡区) 叠加 Bullish Order Block，流动性掠夺完成。" },
+                { name: "Steve Cohen", style: "Tape Reading", verdict: "看多", quote: "买盘挂单厚重，主动性买入激增，成交量异动确认。" },
+                { name: "Al Brooks", style: "Price Action", verdict: "看多", quote: "H1 强势趋势中的 M5 二次突破 (H2)，K线实体饱满。" },
+                { name: "Jim Simons", style: "Quant", verdict: "看多", quote: "高频均值回归模型信号触发，胜率 > 68%。" }
+            ];
+        } else if (isSell) {
+            return [
+                { name: "ICT (SMC)", style: "Smart Money", verdict: "看空", quote: "价格进入 Bearish Breaker，上方 Buy-side Liquidity 已被扫除。" },
+                { name: "Steve Cohen", style: "Tape Reading", verdict: "看空", quote: "大单抛售出现，上方压单密集，Bid 端撤单明显。" },
+                { name: "Al Brooks", style: "Price Action", verdict: "看空", quote: "连续三根阴线跌破前期低点 (L2)，楔形反转确认。" },
+                { name: "Jim Simons", style: "Quant", verdict: "看空", quote: "动量因子衰竭，统计套利模型提示反转做空。" }
+            ];
+        } else {
+             return [
+                { name: "ICT (SMC)", style: "Smart Money", verdict: "观望", quote: "处于均衡区间 (Equilibrium)，等待向一边扫流动性。" },
+                { name: "Al Brooks", style: "Price Action", verdict: "观望", quote: "K线重叠严重，典型的铁丝网震荡形态 (Barb Wire)。" },
+                { name: "Steve Cohen", style: "Tape Reading", verdict: "观望", quote: "盘口缺乏方向感，大单缺席，散户博弈为主。" },
+                { name: "Jim Simons", style: "Quant", verdict: "观望", quote: "信号噪音比过高，不建议入场。" }
+            ];
+        }
+    } else {
+        if (isBuy) {
+            return [
+                { name: "Jesse Livermore", style: "趋势追踪", verdict: "看多", quote: "价格突破关键点，最小阻力线向上，成交量配合放大。" },
+                { name: "George Soros", style: "反身性理论", verdict: "看多", quote: "市场偏见正在自我强化，顺势而为，直到泡沫破裂前夕。" },
+                { name: "Warren Buffett", style: "价值投资", verdict: "观望", quote: "需确认安全边际，目前不做过多评价，除非价格极具吸引力。" },
+                { name: "ICT (SMC)", style: "聪明钱结构", verdict: "看多", quote: "回踩 HTF 订单块，大周期结构看涨，结构未被破坏。" }
+            ];
+        } else if (isSell) {
+            return [
+                { name: "Jesse Livermore", style: "趋势追踪", verdict: "看空", quote: "头部形态确立，趋势发生逆转，此时做多是愚蠢的。" },
+                { name: "George Soros", style: "反身性理论", verdict: "看空", quote: "基本面恶化引发抛售，反身性正反馈启动，加速下跌。" },
+                { name: "Jim Simons", style: "量化概率", verdict: "看空", quote: "高频动量指标显示下行概率 > 75%，建议做空。" },
+                { name: "Steve Cohen", style: "盘口量价", verdict: "看空", quote: "买盘枯竭，巨量抛单涌现，机构正在出货。" }
+            ];
+        } else {
+            return [
+                { name: "Jesse Livermore", style: "趋势追踪", verdict: "观望", quote: "市场处于震荡区间，等待突破方向，不要在窄幅震荡中消耗本金。" },
+                { name: "Al Brooks", style: "价格行为", verdict: "观望", quote: "K线重叠严重，缺乏明确趋势条，胜率接近 50/50。" },
+                { name: "Jim Simons", style: "量化概率", verdict: "观望", quote: "信号噪音比过高，不建议入场，等待高胜率信号。" },
+                { name: "Warren Buffett", style: "价值投资", verdict: "观望", quote: "耐心是投资中最重要的品质，等待好球区。" }
+            ];
+        }
+    }
+};
+
+// ... (lookupStockSymbol uses Gemini 2.5 Flash for speed)
 export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => {
   const ai = initAI();
   if (!ai) throw new Error("API Key not configured");
 
-  // Use Gemini 2.5 Flash for speed in lookup tasks
+  // Use Gemini 2.5 Flash for fast lookup
   const prompt = `
+    Role: Gemini 2.5 Flash (Fast Financial Data Assistant).
     Task: Identify the correct stock symbol and company name for the user query: "${query}".
     
     Instructions:
-    1. Analyze the query to extract the intended financial asset. Ignore numbers that look like prices, timeframes, or noise (e.g. in "XAUUSD 5min 4132", the asset is "XAUUSD").
+    1. Analyze the query to extract the intended financial asset. Ignore numbers that look like prices, timeframes, or noise.
     2. Use Google Search to find the official trading ticker.
     3. Return the symbol in standard TradingView format (EXCHANGE:TICKER).
        
-       Mapping Rules for CHINA/HK STOCKS (Important):
-       - If input is 6 digits starting with '6' (e.g., 600519) -> Use "SSE:6xxxxx" (Shanghai).
-       - If input is 6 digits starting with '0' or '3' (e.g., 000001, 300059) -> Use "SZSE:xxxxxx" (Shenzhen).
-       - If input is 4-5 digits (e.g., 700, 00700) -> Use "HKEX:00700" (Hong Kong).
+       Mapping Rules for CHINA/HK STOCKS (Critical):
+       - If query is 6 digits starting with '6' (e.g. 600519, 601288) -> Use "SSE:6xxxxx".
+       - If query is 6 digits starting with '0' or '3' -> Use "SZSE:xxxxxx".
+       - If query is Chinese name (e.g. "农业银行", "Agri Bank of China") -> Check if user implies A-Share (601288) or H-Share (01288). Default to A-Share (SSE/SZSE) if ambiguous as it's the primary market.
        
-       Other Examples: "NASDAQ:AAPL", "NYSE:BA", "OANDA:XAUUSD".
+       **REAL-TIME DATA SOURCE**: 
+       - For China stocks, specifically search "Sina Finance" (新浪财经) or "East Money" (东方财富) or "Investing.com CN" to find the LATEST LIVE PRICE. Do not rely on delayed generic results.
 
     4. Return the full official company/asset name.
-    5. Return the approximate current price if found (number only), otherwise 0.
-    
-    IMPORTANT: 
-    - If the user types "XAUUSD" or "Gold", return a valid forex/commodity ticker like "OANDA:XAUUSD" or "TVC:GOLD".
-    - If no matching stock is found, explicitly set "symbol" to null.
+    5. Return the approximate current price if found (number only).
     
     Output strictly JSON in this format:
     {
@@ -102,10 +161,10 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
           config: {
             tools: useTools ? [{ googleSearch: {} }] : [],
             safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+              { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+              { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+              { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+              { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
             ],
           }
         });
@@ -120,15 +179,12 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
     
     const data = cleanAndParseJSON(response.text);
     
-    // Strict Validation
     if (!data.symbol || data.symbol === "null" || data.symbol === "NOT_FOUND") {
         throw new Error(`Could not find stock for query: ${query}`);
     }
     
-    // Ensure symbol has a colon (EXCHANGE:TICKER) to be valid for TradingView
     if (!data.symbol.includes(':')) {
         if (data.symbol.match(/^[0-9]{6}$/)) {
-            // Fix for raw China codes returned without exchange
             if (data.symbol.startsWith('6')) data.symbol = `SSE:${data.symbol}`;
             else data.symbol = `SZSE:${data.symbol}`;
         } else if (data.symbol.match(/^[A-Z]{3,5}$/)) {
@@ -146,40 +202,20 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
 
   } catch (error: any) {
     console.error("Symbol Lookup Error:", error);
-    
-    // Emergency Fallback: If quota exceeded, try to just use the query as symbol if it looks like one
     if (error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED')) {
-        console.warn("Quota exceeded during lookup. Using heuristic fallback.");
+        console.warn("Quota exceeded. Using heuristic fallback.");
         let cleanQuery = query.trim().toUpperCase();
-        
-        // Advanced Heuristics for Crypto
-        if (cleanQuery === 'BTC' || cleanQuery === 'BITCOIN') cleanQuery = 'BINANCE:BTCUSDT';
-        else if (cleanQuery === 'ETH' || cleanQuery === 'ETHEREUM') cleanQuery = 'BINANCE:ETHUSDT';
+        if (cleanQuery === 'BTC') cleanQuery = 'BINANCE:BTCUSDT';
+        else if (cleanQuery === 'ETH') cleanQuery = 'BINANCE:ETHUSDT';
         else if (cleanQuery === 'SOL') cleanQuery = 'BINANCE:SOLUSDT';
-        else if (cleanQuery === 'XAUUSD' || cleanQuery === 'GOLD') cleanQuery = 'OANDA:XAUUSD';
-        
-        // China A-Shares Heuristics (Fix for 1D limit issue - Need correct exchange)
+        else if (cleanQuery === 'XAUUSD') cleanQuery = 'OANDA:XAUUSD';
         else if (/^[0-9]{6}$/.test(cleanQuery)) {
-            if (cleanQuery.startsWith('6')) {
-                cleanQuery = `SSE:${cleanQuery}`; // Shanghai
-            } else {
-                cleanQuery = `SZSE:${cleanQuery}`; // Shenzhen (starts with 0 or 3)
-            }
+            if (cleanQuery.startsWith('6')) cleanQuery = `SSE:${cleanQuery}`; 
+            else cleanQuery = `SZSE:${cleanQuery}`; 
         }
-        else if (/^[0-9]{4,5}$/.test(cleanQuery)) {
-            // Hong Kong
-            cleanQuery = `HKEX:${cleanQuery.padStart(5, '0')}`; 
-        } 
-        else if (!cleanQuery.includes(':')) {
-             // Default to NASDAQ for simple tickers
-             cleanQuery = `NASDAQ:${cleanQuery}`;
-        }
+        else if (!cleanQuery.includes(':')) cleanQuery = `NASDAQ:${cleanQuery}`;
 
-        return {
-            symbol: cleanQuery,
-            name: cleanQuery,
-            currentPrice: 0 // Price unknown
-        };
+        return { symbol: cleanQuery, name: cleanQuery, currentPrice: 0 };
     }
     throw error;
   }
@@ -200,33 +236,51 @@ const getPredictionHorizon = (tf: Timeframe): string => {
   }
 };
 
-// Helper to determine the "Higher Timeframe" for resonance check
 const getHigherTimeframe = (tf: Timeframe): string => {
     switch (tf) {
         case Timeframe.M1:
         case Timeframe.M3:
-        case Timeframe.M5: return "1 Hour Chart"; // Scalping checks H1
+        case Timeframe.M5: return "1 Hour Chart"; 
         case Timeframe.M15:
-        case Timeframe.M30: return "4 Hour Chart"; // Intraday checks H4
+        case Timeframe.M30: return "4 Hour Chart";
         case Timeframe.H1:
         case Timeframe.H2:
-        case Timeframe.H4: return "Daily Chart"; // Swing checks Daily
-        case Timeframe.D1: return "Weekly Chart"; // Position checks Weekly
+        case Timeframe.H4: return "Daily Chart";
+        case Timeframe.D1: return "Weekly Chart";
         default: return "Daily Chart";
     }
 };
 
-const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: number): RealTimeAnalysis => {
-    // If AI returned 0 or null for price, fallback to reference
+const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: number, symbol: string): RealTimeAnalysis => {
     const finalPrice = (data.realTimePrice && data.realTimePrice > 0) ? data.realTimePrice : realTimePrice;
 
-    // Basic defaults if AI fails to return some fields
+    let finalGurus = data.guruInsights;
+    if (!finalGurus || !Array.isArray(finalGurus) || finalGurus.length === 0) {
+        const signal = data.signal || SignalType.NEUTRAL;
+        const structure = data.marketStructure || "Ranging";
+        finalGurus = generateFallbackGurus(signal, structure, timeframe, symbol);
+    }
+
+    let finalDrivers = data.confidenceDrivers;
+    if (!finalDrivers || !Array.isArray(finalDrivers) || finalDrivers.length === 0) {
+        finalDrivers = ["Analysis Incomplete"];
+    }
+
+    const logicBlock = data.redTeamingLogic || data.deepSeekReasoning || "Gemini 3 Pro (Critic) Logic:\n> 等待数据输入...\n> 逻辑验证挂起...";
+
+    // Handle Market Regime Default
+    const defaultRegime: MarketRegime = {
+        macroTrend: 'Neutral (震荡)',
+        sectorPerformance: 'Weak (弱势)',
+        institutionalAction: 'Neutral (观望)'
+    };
+
     const defaultData: RealTimeAnalysis = {
         signal: SignalType.NEUTRAL,
         winRate: 50,
         historicalWinRate: 50,
         entryPrice: finalPrice,
-        entryStrategy: "观望 (Wait)", // Default strategy
+        entryStrategy: "观望 (Wait)",
         takeProfit: finalPrice * 1.01,
         stopLoss: finalPrice * 0.99,
         supportLevel: finalPrice * 0.98,
@@ -238,9 +292,11 @@ const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: num
         marketStructure: "Ranging/Consolidation",
         keyFactors: ["Price Anchor"],
         kLineTrend: "Neutral consolidation detected.",
-        trendResonance: "分析不足 (Insufficient Data)", // NEW Default
-        guruInsights: [],
-        deepSeekReasoning: "DeepSeek 逻辑推演:\n> 等待数据输入...\n> 逻辑验证挂起...",
+        trendResonance: "分析不足 (Insufficient Data)",
+        marketRegime: defaultRegime,
+        confidenceDrivers: ["Anchor Price Only"],
+        guruInsights: [], 
+        redTeamingLogic: logicBlock,
         modelFusionConfidence: 50,
         futurePrediction: {
             targetHigh: finalPrice * 1.01,
@@ -251,9 +307,18 @@ const validateAndFillData = (data: any, timeframe: Timeframe, realTimePrice: num
         realTimePrice: finalPrice
     };
 
-    return { ...defaultData, ...data, realTimePrice: finalPrice }; 
+    return { 
+        ...defaultData, 
+        ...data, 
+        realTimePrice: finalPrice,
+        guruInsights: finalGurus,
+        confidenceDrivers: finalDrivers,
+        redTeamingLogic: logicBlock,
+        marketRegime: data.marketRegime || defaultRegime
+    }; 
 };
 
+// ... (analyzeMarketData uses Gemini 3 Pro)
 export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, referencePrice: number): Promise<RealTimeAnalysis> => {
   const ai = initAI();
   if (!ai) throw new Error("API Key not configured");
@@ -261,221 +326,235 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, re
   const horizon = getPredictionHorizon(timeframe);
   const higherTF = getHigherTimeframe(timeframe);
 
-  // INSTITUTIONAL ANALYSIS PROTOCOL PROMPT
-  const systemInstruction = `
-    You are Gemini 3 Pro, a world-class Quantitative Analyst running an "Institutional Analysis Protocol".
-    Your goal is to provide a rigorous, mathematically sound trading plan for ${symbol} on the ${timeframe} timeframe.
-    
-    You are working in a Dual-Core architecture:
-    1. CORE A (You): Gemini 3 Pro - Data Aggregator, Market Structure Analyst, Guru Persona Simulator.
-    2. CORE B (Simulated): DeepSeek R1 - Red Teaming Logic Unit (Devil's Advocate), Logic Stress Tester.
+  const isChinaMarket = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
+  
+  // *** PROTOCOL DEFINITION ***
+  // These constants define the specific rules for different markets
+  const CN_PROTOCOL = `
+      *** PROTOCOL: DRAGON HEART (A-SHARES) ***
+      FOCUS: "Hot Money" (游资), "Northbound" (北向), "Sector Rotation" (板块).
+      
+      RULES:
+      1. T+1 RESTRICTION: Buying today means locking capital until tomorrow. Focus on "Safety" and "Closing Strong".
+      2. LIMITS: Check for 10% (Main) or 20% (ChiNext) limit up/down proximity.
+      3. SEARCH SOURCES (MANDATORY): "site:finance.sina.com.cn", "site:eastmoney.com".
+         - Look for: "Dragon Tiger List" (龙虎榜), "Concept Hype" (概念炒作).
+      4. STRATEGIES: "Limit Up Acceleration" (打板), "Low-Suck" (低吸), "First Green Candle" (首阴).
+  `;
 
-    OUTPUT FORMAT: STRICT JSON only. Do not output markdown code blocks.
-    LANGUAGE: All reasoning, insights, and logic outputs must be in CHINESE (中文).
+  const US_PROTOCOL = `
+      *** PROTOCOL: EAGLE EYE (US STOCKS) ***
+      FOCUS: "Institutional Flow", "Options Gamma", "Fed/Macro".
+      
+      RULES:
+      1. T+0 / PRE-MARKET: Intraday volatility is key. Check Pre-market volume.
+      2. SEARCH SOURCES (MANDATORY): "site:cnbc.com", "site:bloomberg.com", "site:seekingalpha.com", "site:finance.sina.com.cn" (for CN sentiment).
+         - Look for: "Analyst Upgrades", "Options Flow" (Call/Put Ratio), "Earnings Surprise".
+      3. STRATEGIES: "VWAP Bounce", "Opening Range Breakout (ORB)", "Supply/Demand Zones".
+  `;
+  
+  const marketProtocol = isChinaMarket ? CN_PROTOCOL : US_PROTOCOL;
+
+  const systemInstruction = `
+    You are Gemini 3 Pro, running the "Gemini Adversarial Intelligence Protocol" (Dual-Persona).
+    
+    PERSONAS:
+    1. CORE A (Analyst): Optimistic, looking for setups based on Algorithms & War Methods.
+    2. CORE B (Critic): Pessimistic, "Red Team" auditor. Looks for traps and macro headwinds.
+    
+    NO HALLUCINATION RULE:
+    - Base ALL technical findings on the reference price (${referencePrice}) and search results.
+    - If data is not found, state "Unknown". Do NOT invent prices or patterns.
+
+    OUTPUT: STRICT JSON. Language: CHINESE (中文).
   `;
 
   const prompt = `
-    EXECUTE INSTITUTIONAL PROTOCOL FOR: ${symbol} (${timeframe})
-    PREDICTION HORIZON: ${horizon}
+    TARGET: ${symbol} | TIMEFRAME: ${timeframe} | PRICE ANCHOR: ${referencePrice}
+    ${marketProtocol}
     
-    *** CRITICAL: PRICE ANCHOR PROTOCOL ***
-    1. Search for the LIVE REAL-TIME PRICE of ${symbol}.
-    2. If Google Search fails or returns old data, use this REFERENCE PRICE: ${referencePrice}.
-    3. ALL CALCULATIONS (Entry, TP, SL, Support, Resistance) MUST be mathematically relative to the final "Price Anchor" you decide on.
-    4. DO NOT hallucinate prices. If ${symbol} is trading at 100, do not predict 2000.
+    PHASE 0: SITUATIONAL AWARENESS (The Weather)
+    - Macro: DXY, VIX, Bond Yields. Is it Risk-On or Risk-Off?
+    - Sector: Is the sector (e.g. AI, EV) outperforming the index?
+    - Flow: Accumulation or Distribution?
 
-    PHASE 1: GLOBAL INTELLIGENCE MINING (Wide Mining & Refining)
-    - Search for the REAL-TIME PRICE of ${symbol}.
-    - Search for Chart Patterns on BOTH:
-      1. Current Timeframe: ${timeframe} (Execution)
-      2. Higher Timeframe: ${higherTF} (Trend Bias)
-    - Mining: Scan Macro, Sector, and Asset-specific news.
-    - Distillation: Filter out noise. Keep only TOP 3 DIRECT CATALYSTS.
+    PHASE 1: INTELLIGENCE MINING (The Facts)
+    - Search specifically using the sources defined in the PROTOCOL above.
+    - Extract: Real-time News, Sentiment, and Institutional Moves.
 
-    PHASE 2: MARKET STRUCTURE MAPPING & MTF RESONANCE (Critical)
-    - Identify Structure on ${timeframe}: HH/HL (Bull) or LH/LL (Bear).
-    - Identify Structure on ${higherTF}: Is the major trend alignment with the minor trend?
-    - **MTF RESONANCE RULE**: 
-      - IF ${higherTF} is Bullish AND ${timeframe} is Bullish -> STRONG BUY SIGNAL.
-      - IF ${higherTF} is Bearish AND ${timeframe} is Bullish -> WEAK/COUNTER-TREND (Reduce Win Rate).
-      - Output the status in "trendResonance" field (e.g., "H4 Bull + 15m Bull = Full Resonance").
+    PHASE 2: STRUCTURE & ALGORITHMS (The Chart)
+    - Identify Market Structure (HH/HL, BOS).
+    - Check Algorithms: RSI Divergence? MACD Cross? Bollinger Squeeze?
+    - Check War Methods: Does it match a specific strategy (e.g. "Golden Pit", "Bull Flag")?
 
-    PHASE 3: DEEPSEEK RED TEAMING (LOGIC STRESS TEST & REPAIR)
-    - SIMULATE DeepSeek R1: Act as a harsh critic.
-    - LOOP:
-      1. Gemini proposes a plan (e.g. Buy @ X).
-      2. DeepSeek attacks it (e.g. "Too close to resistance").
-      3. Gemini *MODIFIES* the plan based on the attack (e.g. "Lower TP to Y").
-    - Output the final refined logic in "deepSeekReasoning".
+    PHASE 3: RED TEAMING (The Audit)
+    - ACT AS CORE B. Attack the findings. 
+    - Is the "Breakout" actually a "Liquidity Sweep"? 
+    - Is the volume confirming the move?
 
-    PHASE 4: RISK MODELING & EXECUTION
-    - Phase 4.1 ENTRY STRATEGY: 
-      - Determine: "现价进场 (Market)", "回调做多 (Limit Buy)", "反弹做空 (Limit Sell)", or "突破进场 (Stop Entry)".
-      - Note: If resonance is weak, strictly suggest "Wait for Pullback".
-    - Phase 4.2 RISK CALCULATION (ATR Based):
-      - Calculate Entry, Take Profit, and Stop Loss using volatility.
-      - Ensure Risk/Reward is > 1.5.
-
-    PHASE 5: COUNCIL OF MASTERS (Dynamic)
-    - For ${timeframe} (Short-term), use: ICT (Smart Money), Steve Cohen (Tape Reading), Al Brooks (Price Action), Jim Simons (Quant).
-    - For ${timeframe} (Long-term > H4), use: Livermore, Soros, Buffett.
-
-    RETURN JSON STRUCTURE (Mandatory Fields):
+    PHASE 4: SCORING (The Weighted Probability Model)
+    - FORMULA: Base (50%) + Drivers - Penalties.
+    - DRIVERS (Add to score):
+      - Trend Resonance (Aligned with HTF?): +10% to +15%.
+      - Master Consensus (Do Gurus agree?): +5% to +15%.
+      - Market Structure (Clear pattern?): +5% to +15%.
+      - Sector Strength: +5% to +10%.
+    - PENALTIES (Subtract from score):
+      - Red Team Veto (Critical flaw?): -10% to -30%.
+      - Macro Headwind (Risk-off?): -5% to -15%.
+    - HARD CAP: Win Rate cannot exceed 95%.
+    - OUTPUT: Final 'winRate' and 'confidenceDrivers' array (e.g. ["Trend Resonance +15%", "Macro Drag -5%"]).
+    
+    PHASE 5: COUNCIL OF MASTERS
+    - Populate with relevant masters defined in the PROTOCOL (e.g. Hot Money for CN, Quants for US).
+    - CRITICAL: Quotes must be SPECIFIC and ACTIONABLE. 
+      - Bad: "Market looks good."
+      - Good: "Buying volume on the 15m pullback to 12.50 confirms strength. Watching for 13.00 breakout."
+    
+    PHASE 6: EXECUTION (The Plan)
+    - Signal: BUY / SELL / NEUTRAL.
+    - TIMING (Entry Strategy):
+      - DO NOT just say "Buy". Say WHEN.
+      - Example: "Wait for pullback to ${referencePrice * 0.995} (EMA20)" or "Buy Stop above ${referencePrice * 1.005}".
+    - TP/SL: Calculate based on ATR/Volatility.
+    
+    RETURN JSON (Match RealTimeAnalysis Interface):
     {
       "signal": "BUY" | "SELL" | "NEUTRAL",
       "realTimePrice": number, 
-      "winRate": number, (0-100, Penalize if MTF Resonance is weak)
+      "winRate": number,
       "historicalWinRate": number, 
       "entryPrice": number, 
-      "entryStrategy": "String description (e.g. '回调至 Support 做多')",
+      "entryStrategy": "String (Specific Trigger Condition)",
       "takeProfit": number,
       "stopLoss": number,
       "supportLevel": number,
       "resistanceLevel": number,
       "riskRewardRatio": number,
-      "reasoning": "Synthesized conclusion in Chinese...",
-      "volatilityAssessment": "High" | "Moderate" | "Low",
-      "strategyMatch": "Strategy Name (e.g. ICT Order Block)",
-      "marketStructure": "Bullish Structure" | "Bearish Structure" | "Ranging",
-      "keyFactors": ["Factor 1", "Factor 2", ...],
-      "kLineTrend": "Description of K-line behavior in Chinese",
-      "trendResonance": "String description of Multi-Timeframe status", 
-      "guruInsights": [ ... ],
-      "deepSeekReasoning": "DeepSeek R1 逻辑推演:\n> 趋势共振检查: ...\n> 逻辑漏洞修正: ...\n> 最终结论: ...",
-      "modelFusionConfidence": number, (0-100),
-      "futurePrediction": {
-         "targetHigh": number,
-         "targetLow": number,
-         "confidence": number,
-         "predictionPeriod": "${horizon}"
-      }
+      "reasoning": "Detailed logic...",
+      "volatilityAssessment": "String",
+      "strategyMatch": "String",
+      "marketStructure": "String",
+      "keyFactors": ["String"],
+      "kLineTrend": "String",
+      "trendResonance": "String", 
+      "marketRegime": { "macroTrend": "String", "sectorPerformance": "String", "institutionalAction": "String" },
+      "confidenceDrivers": ["String"],
+      "guruInsights": [ { "name": "String", "style": "String", "verdict": "String", "quote": "String" } ],
+      "redTeamingLogic": "String",
+      "modelFusionConfidence": number,
+      "futurePrediction": { "targetHigh": number, "targetLow": number, "confidence": number, "predictionPeriod": "String" }
     }
   `;
 
-  // Fallback Logic for Quota Exceeded or Errors
   const runAnalysis = async (model: string, useSearch: boolean) => {
       const config = {
         systemInstruction,
+        tools: useSearch ? [{ googleSearch: {} }] : [],
         safetySettings: [
-             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-             { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-             { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-             { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+            { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
         ],
-        tools: useSearch ? [{ googleSearch: {} }] : []
       };
-
       return await ai.models.generateContent({
-        model: model,
-        contents: prompt,
-        config: config
+          model,
+          contents: prompt,
+          config
       });
   };
 
   try {
-    // Attempt 1: Gemini 3 Pro with Search
+    // Attempt 1: Gemini 3 Pro (Full Capability) - EXCLUSIVE TO ANALYSIS
     const response = await runAnalysis('gemini-3-pro-preview', true);
-    const data = cleanAndParseJSON(response.text || "{}");
-    return validateAndFillData(data, timeframe, data.realTimePrice || referencePrice);
-
+    if (!response.text) throw new Error("Empty response from Gemini Pro");
+    const json = cleanAndParseJSON(response.text);
+    return validateAndFillData(json, timeframe, referencePrice, symbol);
   } catch (error: any) {
-    console.warn("Primary Analysis Failed. Retrying with Fallback...", error.message);
-    
-    // Check for Quota Limit
-    const isQuota = error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED');
+    console.warn("Analysis Primary Attempt Failed. Trying fallback...", error);
+    const isQuotaError = error.message?.includes('429') || error.message?.includes('RESOURCE_EXHAUSTED');
+    const useSearch = !isQuotaError;
 
     try {
-        // Attempt 2: Gemini 2.5 Flash (If Pro failed or Quota)
-        // If quota exceeded on Pro, Flash might still work or share quota? 
-        // If Grounding Quota exceeded, we must DISABLE search.
-        const disableSearch = isQuota; 
-        const modelToUse = 'gemini-2.5-flash';
-        
-        // If search disabled, we rely on prompt instructions to handle missing price or data gracefully
-        // The prompt will try to execute logic based on general knowledge if possible, or fail gracefully
-        
-        const response = await runAnalysis(modelToUse, !disableSearch);
-        const data = cleanAndParseJSON(response.text || "{}");
-        return validateAndFillData(data, timeframe, data.realTimePrice || referencePrice);
-
-    } catch (fallbackError: any) {
-        console.error("All Analysis attempts failed.", fallbackError);
-        throw new Error(isQuota ? "分析服务暂时不可用 (Quota Exceeded). 请稍后再试。" : "AI 分析失败，请重试。");
+        const fallbackResponse = await runAnalysis('gemini-2.5-flash', useSearch);
+        if (!fallbackResponse.text) throw new Error("Empty response from Fallback");
+        const json = cleanAndParseJSON(fallbackResponse.text);
+        return validateAndFillData(json, timeframe, referencePrice, symbol);
+    } catch (finalError) {
+        console.error("All Analysis Attempts Failed", finalError);
+        throw finalError;
     }
   }
 };
 
-/**
- * Performs a historical backtest strategy simulation using Gemini 3 Pro.
- */
-export const performBacktest = async (
-  symbol: string, 
-  strategy: BacktestStrategy, 
-  period: BacktestPeriod
-): Promise<BacktestResult> => {
+// ... (performBacktest uses Gemini 2.5 Flash - Updated to be rigorous)
+export const performBacktest = async (symbol: string, strategy: BacktestStrategy, period: BacktestPeriod): Promise<BacktestResult> => {
   const ai = initAI();
   if (!ai) throw new Error("API Key not configured");
+
+  const isChinaMarket = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
   
-  // Backtest Prompt remains focused on strategy simulation
+  let auditProtocol = "SIMULATION PROTOCOL: Simulate trades based on historical price data.";
+  if (isChinaMarket) {
+      auditProtocol = `
+      *** STRICT HISTORICAL AUDIT PROTOCOL (A-SHARES) ***
+      1. DO NOT SIMULATE fictitious trades. 
+      2. SEARCH for ACTUAL HISTORICAL DATA (Open/Close prices) and Real Market Events during the period.
+      3. Verify if the strategy signals ACTUALLY occurred in history.
+      4. T+1 RULE: Account for inability to sell on the same day.
+      `;
+  }
+
   const prompt = `
-    Role: Senior Quantitative Researcher.
-    Task: Perform a historical backtest simulation for ${symbol}.
-    Strategy: ${strategy}
-    Period: ${period}
-    
-    Instructions:
-    1. Search for historical price data and chart behavior of ${symbol} over the last ${period}.
-    2. Identify key moments where the strategy "${strategy}" would have triggered.
-    3. Calculate the hypothetical Win Rate and Profit Factor based on these triggers.
-    4. Provide a description of the "Equity Curve" (e.g., "Steady growth with minor drawdowns").
-    5. Identify the Best and Worst hypothetical trades.
-    6. Output all text fields in CHINESE (中文).
-    
-    Output JSON format:
+    ROLE: Gemini 2.5 Flash (Quantitative Researcher).
+    TASK: Perform a backtest/audit for ${symbol} using the strategy: "${strategy}" over the period: "${period}".
+    ${auditProtocol}
+    STRATEGY LOGIC: ${strategy}
+    INSTRUCTIONS:
+    1. Search for historical OHLC data and news for ${symbol} covering ${period}.
+    2. Identify specific dates where the strategy would have triggered.
+    3. Calculate the hypothetical (or actual) PnL based on these triggers.
+    OUTPUT FORMAT (JSON ONLY):
     {
       "strategyName": "${strategy}",
       "period": "${period}",
       "totalTrades": number,
-      "winRate": number, (percentage)
-      "profitFactor": number, (e.g. 1.5)
-      "netProfit": "string", (e.g. "+12.5%")
-      "bestTrade": "string description in Chinese",
-      "worstTrade": "string description in Chinese",
-      "equityCurveDescription": "string in Chinese",
-      "insights": "Deep analysis of why it worked or failed in Chinese"
+      "winRate": number, 
+      "profitFactor": number,
+      "netProfit": "string",
+      "bestTrade": "Description",
+      "worstTrade": "Description",
+      "equityCurveDescription": "Brief text",
+      "insights": "Insights"
     }
   `;
 
   try {
-     const response = await ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+      const result = await ai.models.generateContent({
+        model: 'gemini-2.5-flash', 
         contents: prompt,
         config: {
             tools: [{ googleSearch: {} }],
             safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            ]
+                { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+                { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+                { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            ],
         }
-     });
+        });
 
-     return cleanAndParseJSON(response.text || "{}");
+        if (!result.text) throw new Error("Backtest produced empty response");
+        return cleanAndParseJSON(result.text);
   } catch (error: any) {
-      console.error("Backtest Failed", error);
-      
-      // Fallback for Backtest
-       try {
-         const aiFlash = initAI();
-         if(!aiFlash) throw new Error("No API");
-         const response = await aiFlash.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                tools: [{ googleSearch: {} }]
-            }
-         });
-         return cleanAndParseJSON(response.text || "{}");
-      } catch (e) {
-          throw new Error("Backtest simulation failed.");
-      }
+      console.error("Backtest Failed:", error);
+       const result = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+           config: { tools: [{ googleSearch: {} }] }
+       });
+       if (!result.text) throw new Error("Backtest Fallback failed");
+       return cleanAndParseJSON(result.text);
   }
 };

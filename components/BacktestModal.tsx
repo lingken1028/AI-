@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { BacktestStrategy, BacktestPeriod, BacktestResult } from '../types';
 import { performBacktest } from '../services/geminiService';
@@ -42,7 +43,7 @@ const BacktestModal: React.FC<BacktestModalProps> = ({ isOpen, onClose, symbol }
               策略历史回测
             </h2>
             <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30 font-bold">Gemini 3 Pro</span>
+                <span className="text-[10px] bg-blue-500/20 text-blue-300 px-1.5 py-0.5 rounded border border-blue-500/30 font-bold">Gemini 2.5 Flash</span>
                 <span className="text-xs text-gray-500">
                 对 {symbol} 历史行情的深度模拟
                 </span>
@@ -90,7 +91,7 @@ const BacktestModal: React.FC<BacktestModalProps> = ({ isOpen, onClose, symbol }
             className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50 transition-all"
           >
             {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <PlayCircle className="w-5 h-5" />}
-            {loading ? "Gemini 3 Pro 正在深度推演..." : "启动高精策略回测"}
+            {loading ? "Gemini Flash 正在深度推演..." : "启动高精策略回测"}
           </button>
 
           {/* Results Area */}
@@ -126,7 +127,7 @@ const BacktestModal: React.FC<BacktestModalProps> = ({ isOpen, onClose, symbol }
                 <div>
                    <h4 className="text-xs text-gray-500 uppercase font-bold mb-2 flex items-center gap-2">
                     <Cpu className="w-3 h-3 text-blue-400" />
-                    Gemini 3 Pro 深度点评
+                    Gemini Flash 深度点评
                    </h4>
                    <p className="text-sm text-blue-200/80 italic border-l-2 border-blue-500/30 pl-3">
                       "{result.insights}"

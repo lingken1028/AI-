@@ -1,12 +1,11 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { Activity, Clock, RefreshCcw, Menu, Search, TrendingUp, X, Trash2, Plus, Loader2, BarChart2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Activity, Clock, RefreshCcw, Menu, Search, TrendingUp, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, RotateCcw } from 'lucide-react';
 import StockChart from './components/StockChart';
 import AnalysisCard from './components/AnalysisCard';
 import BacktestModal from './components/BacktestModal';
-import { Timeframe, AIAnalysis, StockSymbol } from './types';
+import { Timeframe, AIAnalysis, StockSymbol, RealTimeAnalysis } from './types';
 import { TIMEFRAMES, formatCurrency, DEFAULT_WATCHLIST } from './constants';
-import { analyzeMarketData, RealTimeAnalysis, lookupStockSymbol } from './services/geminiService';
+import { analyzeMarketData, lookupStockSymbol } from './services/geminiService';
 
 const App: React.FC = () => {
   // Changed initial state to false (Hidden by default)
@@ -14,34 +13,130 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   
-  // Convert static list to state
-  const [watchlist, setWatchlist] = useState<StockSymbol[]>(DEFAULT_WATCHLIST);
-  const [selectedSymbol, setSelectedSymbol] = useState(DEFAULT_WATCHLIST[0]);
+  // 1. PERSISTENCE: Initialize from localStorage if available
+  const [watchlist, setWatchlist] = useState<StockSymbol[]>(() => {
+    try {
+      const saved = localStorage.getItem('tradeGuard_watchlist');
+      return saved ? JSON.parse(saved) : DEFAULT_WATCHLIST;
+    } catch (e) {
+      return DEFAULT_WATCHLIST;
+    }
+  });
+
+  const [selectedSymbol, setSelectedSymbol] = useState(watchlist[0] || DEFAULT_WATCHLIST[0]);
   const [selectedTimeframe, setSelectedTimeframe] = useState<Timeframe>(Timeframe.M15);
   
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null); // New Error State
+  const [error, setError] = useState<string | null>(null);
+  
   const [currentPrice, setCurrentPrice] = useState<number>(selectedSymbol.currentPrice);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   
   const [isBacktestOpen, setIsBacktestOpen] = useState(false);
 
+  // Price Editing State
+  const [isEditingPrice, setIsEditingPrice] = useState(false);
+  const [isPriceManuallySet, setIsPriceManuallySet] = useState(false); // NEW: Track if user locked the price
+  const [tempPriceInput, setTempPriceInput] = useState('');
+  const priceInputRef = useRef<HTMLInputElement>(null);
+
+  // 2. PERSISTENCE: Save to localStorage whenever watchlist changes
+  useEffect(() => {
+    localStorage.setItem('tradeGuard_watchlist', JSON.stringify(watchlist));
+  }, [watchlist]);
+
+  // Ensure currentPrice updates when selectedSymbol changes (Safety fallback)
+  useEffect(() => {
+    // Only update if currentPrice is wildly different (e.g. initial load) to prevent overriding the optimistic update in handleStockSelect
+    if (selectedSymbol.currentPrice !== currentPrice && !isPriceManuallySet) {
+        setCurrentPrice(selectedSymbol.currentPrice);
+    }
+    setIsEditingPrice(false);
+    setIsPriceManuallySet(false); // Reset lock on stock switch
+  }, [selectedSymbol]);
+
+  // NEW: Silent Price Auto-Refresh Interval (Every 60s)
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+        if (!isPriceManuallySet && !isEditingPrice) {
+            refreshPriceSilent();
+        }
+    }, 60000); // 60 seconds
+
+    return () => clearInterval(intervalId);
+  }, [selectedSymbol, isPriceManuallySet, isEditingPrice]);
+
+  const refreshPriceSilent = async () => {
+      try {
+          const freshData = await lookupStockSymbol(selectedSymbol.symbol);
+          if (freshData && freshData.currentPrice > 0) {
+              setCurrentPrice(freshData.currentPrice);
+              setWatchlist(prev => prev.map(s => 
+                  s.symbol === selectedSymbol.symbol ? { ...s, currentPrice: freshData.currentPrice } : s
+              ));
+          }
+      } catch (e) {
+          // Ignore silent errors
+      }
+  };
+
+  // Function to handle stock selection with Auto-Refresh Price
+  const handleStockSelect = async (stock: StockSymbol) => {
+      // 1. Immediate UI Update (Optimistic)
+      setSelectedSymbol(stock);
+      setCurrentPrice(stock.currentPrice); 
+      setIsPriceManuallySet(false); // Reset lock
+      setSidebarOpen(false);
+
+      // 2. Background Refresh (Silent)
+      try {
+          console.log(`Silent refreshing price for ${stock.symbol}...`);
+          const freshData = await lookupStockSymbol(stock.symbol);
+          if (freshData && freshData.currentPrice > 0) {
+              console.log(`Price refreshed: ${freshData.currentPrice}`);
+              setCurrentPrice(freshData.currentPrice);
+              
+              // Update watchlist with new price so next click is accurate
+              setWatchlist(prev => prev.map(s => 
+                  s.symbol === stock.symbol ? { ...s, currentPrice: freshData.currentPrice } : s
+              ));
+          }
+      } catch (e) {
+          console.warn("Silent price refresh failed", e);
+      }
+  };
+
   // Function to fetch data and analysis
   const fetchMarketAnalysis = useCallback(async () => {
     setIsLoading(true);
-    setError(null); // Reset error
-    // Note: We DO NOT clear analysis here (setAnalysis(null)) so the user can see 
-    // the previous result ("history") while the new one loads.
+    setError(null);
     
+    let analysisAnchorPrice = currentPrice;
+
     try {
-      // Call AI to get Real-Time Analysis via Google Search
-      // Pass the current known price as a Reference Anchor
-      const result: RealTimeAnalysis = await analyzeMarketData(selectedSymbol.symbol, selectedTimeframe, currentPrice);
+      // Step 0: Auto-Refresh Price if NOT manually set by user AND not just refreshed
+      // Note: handleStockSelect already tries to refresh, but if user clicks Analyze immediately, we double check.
+      if (!isPriceManuallySet) {
+          try {
+             const freshData = await lookupStockSymbol(selectedSymbol.symbol);
+             if (freshData && freshData.currentPrice > 0) {
+                 analysisAnchorPrice = freshData.currentPrice;
+                 setCurrentPrice(analysisAnchorPrice); 
+                 
+                 setWatchlist(prev => prev.map(s => 
+                    s.symbol === selectedSymbol.symbol ? { ...s, currentPrice: analysisAnchorPrice } : s
+                 ));
+             }
+          } catch (priceErr) {
+             console.warn("Analysis pre-check price refresh failed", priceErr);
+          }
+      }
+
+      // Step 1: Analyze using the anchor price
+      const result: RealTimeAnalysis = await analyzeMarketData(selectedSymbol.symbol, selectedTimeframe, analysisAnchorPrice);
       
-      // Update State with Analysis
       setAnalysis(result);
-      // If AI finds a price, use it for the header display, otherwise fallback to cache
       if(result.realTimePrice) {
           setCurrentPrice(result.realTimePrice);
       }
@@ -53,15 +148,12 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice]);
+  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice, isPriceManuallySet]);
 
-  // Effect: When Symbol or Timeframe changes, reset Analysis completely
-  // because the old analysis is irrelevant to the new context.
   useEffect(() => {
     setAnalysis(null);
     setError(null);
     setIsLoading(false);
-    // Note: We don't need to load chart data manually anymore, TradingView handles it.
   }, [selectedSymbol, selectedTimeframe]);
 
   const handleSearch = async (e: React.FormEvent) => {
@@ -72,19 +164,17 @@ const App: React.FC = () => {
     try {
         const foundStock = await lookupStockSymbol(searchQuery);
         
-        // Strict check before adding
         if (!foundStock || !foundStock.symbol || foundStock.symbol.trim() === '' || foundStock.symbol === 'NULL') {
              throw new Error("Invalid stock data received");
         }
 
-        // Add to watchlist if not exists
         if (!watchlist.some(s => s.symbol === foundStock.symbol)) {
             setWatchlist(prev => [foundStock, ...prev]);
         }
         
-        // Select it immediately
-        setSelectedSymbol(foundStock);
-        if (foundStock.currentPrice > 0) setCurrentPrice(foundStock.currentPrice);
+        // Use the handler to select and ensure consistency
+        handleStockSelect(foundStock);
+        
         setSearchQuery('');
         setSidebarOpen(false); 
         
@@ -97,32 +187,66 @@ const App: React.FC = () => {
   };
 
   const removeStock = (e: React.MouseEvent, symbolToRemove: string) => {
-    e.stopPropagation(); // Prevent triggering the selection click
+    e.stopPropagation();
     
     const newList = watchlist.filter(s => s.symbol !== symbolToRemove);
     setWatchlist(newList);
 
-    // If we deleted the currently selected symbol, switch to the first available
     if (selectedSymbol.symbol === symbolToRemove) {
         if (newList.length > 0) {
-            setSelectedSymbol(newList[0]);
-        } else {
-            // Keep current view but user has an empty list, which is fine
+            handleStockSelect(newList[0]);
         }
     }
+  };
+
+  // 3. SORTING LOGIC: Move items up/down
+  const moveStock = (e: React.MouseEvent, index: number, direction: 'up' | 'down') => {
+    e.stopPropagation();
+    if ((direction === 'up' && index === 0) || (direction === 'down' && index === watchlist.length - 1)) return;
+
+    const newList = [...watchlist];
+    const swapIndex = direction === 'up' ? index - 1 : index + 1;
+    // Swap
+    [newList[index], newList[swapIndex]] = [newList[swapIndex], newList[index]];
+
+    setWatchlist(newList);
+  };
+
+  // Price Edit Handlers
+  const startEditingPrice = () => {
+    setTempPriceInput(currentPrice.toString());
+    setIsEditingPrice(true);
+    setTimeout(() => priceInputRef.current?.focus(), 100);
+  };
+
+  const savePrice = () => {
+    const val = parseFloat(tempPriceInput);
+    if (!isNaN(val) && val > 0) {
+      setCurrentPrice(val);
+      setIsPriceManuallySet(true); // MARK AS MANUALLY SET
+      
+      // Update the watchlist item too so it persists
+      const updatedWatchlist = watchlist.map(s => 
+        s.symbol === selectedSymbol.symbol ? { ...s, currentPrice: val } : s
+      );
+      setWatchlist(updatedWatchlist);
+    }
+    setIsEditingPrice(false);
+  };
+
+  const cancelEditPrice = () => {
+    setIsEditingPrice(false);
   };
 
   return (
     <div className="flex h-screen bg-trade-bg text-trade-text font-sans overflow-hidden">
       
-      {/* Backtest Modal */}
       <BacktestModal 
         isOpen={isBacktestOpen} 
         onClose={() => setIsBacktestOpen(false)} 
         symbol={selectedSymbol.symbol} 
       />
 
-      {/* Collapsible Sidebar */}
       <aside 
         className={`
           fixed inset-y-0 left-0 z-50 w-64 bg-[#0b1215] border-r border-gray-800 transform transition-transform duration-300 ease-in-out
@@ -130,7 +254,7 @@ const App: React.FC = () => {
           lg:fixed lg:translate-x-0 lg:w-64 flex flex-col shadow-2xl
           ${!sidebarOpen && 'lg:hidden'} 
         `}
-        style={{ display: sidebarOpen ? 'flex' : 'none' }} // Explicitly hide to prevent layout shifts if needed, though transform handles visual
+        style={{ display: sidebarOpen ? 'flex' : 'none' }}
       >
         <div className="p-4 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-white">
@@ -168,13 +292,10 @@ const App: React.FC = () => {
           </div>
 
           <div className="space-y-1 overflow-y-auto custom-scrollbar flex-1 pr-1">
-            {watchlist.map((stock) => (
+            {watchlist.map((stock, index) => (
               <div
                 key={stock.symbol}
-                onClick={() => {
-                  setSelectedSymbol(stock);
-                  setSidebarOpen(false); // Auto close on selection for cleaner view
-                }}
+                onClick={() => handleStockSelect(stock)}
                 className={`
                   group w-full flex items-center justify-between p-3 rounded-lg text-left transition-all cursor-pointer border border-transparent
                   ${selectedSymbol.symbol === stock.symbol 
@@ -192,16 +313,32 @@ const App: React.FC = () => {
                     </div>
                 </div>
                 
-                <button 
-                    onClick={(e) => removeStock(e, stock.symbol)}
-                    className={`
-                        p-1.5 rounded-md transition-opacity duration-200
-                        ${selectedSymbol.symbol === stock.symbol ? 'opacity-100 hover:bg-red-500/20 text-red-300' : 'opacity-0 group-hover:opacity-100 hover:bg-gray-700 text-gray-400'}
-                    `}
-                    title="从列表中删除"
-                >
-                    <Trash2 className="w-4 h-4" />
-                </button>
+                {/* Action Buttons: Show on Hover */}
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex flex-col">
+                        <button 
+                            onClick={(e) => moveStock(e, index, 'up')}
+                            disabled={index === 0}
+                            className="p-0.5 hover:text-white text-gray-500 disabled:opacity-30"
+                        >
+                            <ChevronUp className="w-3 h-3" />
+                        </button>
+                        <button 
+                            onClick={(e) => moveStock(e, index, 'down')}
+                            disabled={index === watchlist.length - 1}
+                            className="p-0.5 hover:text-white text-gray-500 disabled:opacity-30"
+                        >
+                            <ChevronDown className="w-3 h-3" />
+                        </button>
+                    </div>
+                    <button 
+                        onClick={(e) => removeStock(e, stock.symbol)}
+                        className="p-1.5 rounded-md hover:bg-red-500/20 text-gray-400 hover:text-red-400 ml-1 transition-colors"
+                        title="删除"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
               </div>
             ))}
             
@@ -214,10 +351,8 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative w-full transition-all duration-300">
         
-        {/* Top Header */}
         <header className="h-16 border-b border-gray-800 bg-[#0b1215]/95 backdrop-blur flex items-center justify-between px-4 lg:px-6 shrink-0 z-40">
           <div className="flex items-center gap-4">
              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-2 -ml-2 text-gray-400 hover:text-white transition-colors">
@@ -225,30 +360,54 @@ const App: React.FC = () => {
               </button>
             <div>
               <h1 className="text-xl font-black text-white flex items-center gap-2">
-                {selectedSymbol.symbol}
+                {selectedSymbol.symbol.split(':')[1] || selectedSymbol.symbol}
                 <span className="text-sm font-normal text-gray-500 hidden sm:inline-block">{selectedSymbol.name}</span>
               </h1>
             </div>
           </div>
 
           <div className="flex items-center gap-4">
-             <div className="hidden sm:block text-right">
-                <div className="text-[10px] text-gray-400 uppercase">分析参考价格</div>
-                <div className="text-lg font-mono font-medium text-white">
-                  {currentPrice ? formatCurrency(currentPrice) : '---'}
+             {/* Removed 'hidden sm:block' to make visible on mobile. Added responsive text. */}
+             <div className="text-right">
+                <div className="text-[10px] text-gray-400 uppercase mb-0.5 flex items-center justify-end gap-1">
+                    <span className="hidden sm:inline">AI 分析锚定价格 (Anchor Price)</span>
+                    <span className="sm:hidden">Anchor</span>
+                    
+                    {!isEditingPrice && (
+                      <button onClick={startEditingPrice} className="text-gray-500 hover:text-trade-accent transition-colors" title="手动校准价格">
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                    )}
+                    {isPriceManuallySet && <span className="text-[9px] text-green-500 font-bold bg-green-500/10 px-1 rounded">LOCKED</span>}
                 </div>
+                
+                {isEditingPrice ? (
+                  <div className="flex items-center gap-2 justify-end">
+                    <input 
+                      ref={priceInputRef}
+                      type="number" 
+                      value={tempPriceInput}
+                      onChange={(e) => setTempPriceInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && savePrice()}
+                      className="w-20 bg-gray-800 border border-trade-accent rounded px-2 py-0.5 text-sm text-white font-mono focus:outline-none"
+                    />
+                    <button onClick={savePrice} className="text-green-500 hover:text-green-400"><Check className="w-4 h-4" /></button>
+                    <button onClick={cancelEditPrice} className="text-red-500 hover:text-red-400"><X className="w-4 h-4" /></button>
+                  </div>
+                ) : (
+                  <div className="text-lg font-mono font-medium text-white cursor-pointer hover:text-trade-accent/80 transition-colors" onClick={startEditingPrice} title="点击校准">
+                    {currentPrice ? formatCurrency(currentPrice) : '---'}
+                  </div>
+                )}
              </div>
           </div>
         </header>
 
-        {/* Scrollable Dashboard Content */}
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 pb-20 scroll-smooth">
           <div className="max-w-7xl mx-auto">
             
-            {/* Control Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
               
-              {/* Timeframes */}
               <div className="flex flex-wrap gap-1 bg-trade-panel p-1 rounded-lg border border-gray-800 w-fit">
                 {TIMEFRAMES.map((tf) => (
                   <button
@@ -267,9 +426,7 @@ const App: React.FC = () => {
                 ))}
               </div>
 
-              {/* Action Buttons */}
               <div className="flex items-center gap-3">
-                 {/* Backtest Trigger */}
                  <button 
                     onClick={() => setIsBacktestOpen(true)}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 text-xs font-bold rounded-lg border border-purple-500/30 transition-all hover:scale-105"
@@ -285,16 +442,16 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Dashboard Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               
-              {/* Left Column: Real-Time Chart */}
               <div className="lg:col-span-2 flex flex-col gap-6">
-                <StockChart symbol={selectedSymbol.symbol} timeframe={selectedTimeframe} />
+                <StockChart 
+                    symbol={selectedSymbol.symbol} 
+                    timeframe={selectedTimeframe} 
+                    onRefreshPrice={refreshPriceSilent} 
+                />
                 
-                {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                   {/* Explicit Support/Resistance Cards */}
                    <StatCard label="关键阻力 (Res)" value={analysis ? formatCurrency(analysis.resistanceLevel || 0) : '---'} color="text-red-400" />
                    <StatCard label="关键支撑 (Sup)" value={analysis ? formatCurrency(analysis.supportLevel || 0) : '---'} color="text-green-400" />
                    <StatCard label="历史胜率" value={analysis ? `${analysis.historicalWinRate}%` : '---'} color="text-blue-400" />
@@ -302,12 +459,11 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              {/* Right Column: AI Analysis */}
               <div className="lg:col-span-1 min-h-[500px]">
                 <AnalysisCard 
                   analysis={analysis} 
                   loading={isLoading} 
-                  error={error} // Pass Error State
+                  error={error}
                   onAnalyze={fetchMarketAnalysis} 
                   symbol={selectedSymbol.symbol}
                 />
@@ -329,7 +485,6 @@ const App: React.FC = () => {
   );
 };
 
-// Helper Component for Stats
 const StatCard = ({ label, value, color }: { label: string, value: string, color: string }) => (
   <div className="bg-trade-panel p-4 rounded-xl border border-gray-800 hover:bg-[#1a232e] transition-colors">
     <div className="text-[10px] uppercase font-bold text-gray-500 mb-1">{label}</div>

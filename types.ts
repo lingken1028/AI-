@@ -1,4 +1,5 @@
 
+
 export enum Timeframe {
   M1 = '1m',
   M3 = '3m',
@@ -27,43 +28,53 @@ export enum SignalType {
 }
 
 export interface GuruInsight {
-  name: string; // e.g., "Jesse Livermore"
-  style: string; // e.g., "趋势突破"
-  verdict: '看多' | '看空' | '观望';
-  quote: string; // Brief reasoning in their style
+  name: string; 
+  style: string; 
+  verdict: string; 
+  quote: string; 
 }
 
 export interface FuturePrediction {
   targetHigh: number;
   targetLow: number;
-  confidence: number; // Percentage 0-100
-  predictionPeriod: string; // e.g., "Next 24 Hours"
+  confidence: number; 
+  predictionPeriod: string; 
+}
+
+export interface MarketRegime {
+    macroTrend: 'Risk-On (进攻)' | 'Risk-Off (避险)' | 'Neutral (震荡)';
+    sectorPerformance: 'Strong (强势)' | 'Weak (弱势)' | 'Divergent (背离)';
+    institutionalAction: 'Accumulation (吸筹)' | 'Distribution (派发)' | 'Neutral (观望)';
 }
 
 export interface AIAnalysis {
   signal: SignalType;
-  realTimePrice?: number; // Added: The price anchor used for this analysis
-  winRate: number; // Percentage 0-100 (Current Probability)
-  historicalWinRate: number; // Percentage 0-100 (Past Accuracy)
+  realTimePrice?: number; 
+  winRate: number; 
+  historicalWinRate: number; 
   entryPrice: number;
-  entryStrategy: string; // NEW: Specific execution method (e.g., "Limit Order @ Support")
+  entryStrategy: string; 
   takeProfit: number;
   stopLoss: number;
-  supportLevel: number; // 关键支撑位 (Rigorous Level)
-  resistanceLevel: number; // 关键阻力位 (Rigorous Level)
+  supportLevel: number; 
+  resistanceLevel: number; 
   riskRewardRatio: number;
   reasoning: string;
-  volatilityAssessment: string; // e.g., "High", "Moderate", "Low"
-  strategyMatch: string; // Name of the specific strategy identified (e.g., "Wyckoff Spring", "Golden Cross")
-  marketStructure: 'Bullish Structure' | 'Bearish Structure' | 'Ranging/Consolidation' | 'Breakout' | 'Correction'; // 市场结构状态
-  keyFactors: string[]; // List of "AI Ref" - key data points/news references
-  kLineTrend: string; // Specific description of the K-line trend for the selected timeframe
-  trendResonance: string; // NEW: Multi-Timeframe Resonance status (e.g., "4H Up + 15m Up")
-  guruInsights: GuruInsight[]; // Array of insights from different simulated masters
-  deepSeekReasoning: string; // The "DeepSeek" logic block (Red Teaming Result)
-  modelFusionConfidence: number; // How much the two models agree (0-100)
-  futurePrediction?: FuturePrediction; // New field for next session forecast
+  volatilityAssessment: string; 
+  strategyMatch: string; 
+  marketStructure: string;
+  keyFactors: string[]; 
+  kLineTrend: string; 
+  trendResonance: string; 
+  marketRegime?: MarketRegime; // NEW: Global Situational Awareness
+  confidenceDrivers: string[]; 
+  guruInsights: GuruInsight[]; 
+  redTeamingLogic: string; 
+  modelFusionConfidence: number; 
+  futurePrediction?: FuturePrediction; 
 }
+
+export type RealTimeAnalysis = AIAnalysis;
 
 export interface StockSymbol {
   symbol: string;
@@ -96,9 +107,9 @@ export interface BacktestResult {
   totalTrades: number;
   winRate: number;
   profitFactor: number;
-  netProfit: string; // e.g. "+15.4%"
+  netProfit: string; 
   bestTrade: string;
   worstTrade: string;
-  equityCurveDescription: string; // Text description of how the equity moved
+  equityCurveDescription: string; 
   insights: string;
 }

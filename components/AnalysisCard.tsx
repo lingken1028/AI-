@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4 } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -33,13 +33,56 @@ const Typewriter = ({ text, speed = 15 }: { text: string; speed?: number }) => {
   return <span className="whitespace-pre-wrap">{displayedText}</span>;
 };
 
+// Helper: Radial Progress Component
+const RadialProgress = ({ score, size = 42, strokeWidth = 3 }: { score: number; size?: number; strokeWidth?: number }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const offset = circumference - (score / 100) * circumference;
+  
+  let colorClass = 'text-red-500';
+  let trackClass = 'text-red-500/10';
+  
+  if (score >= 50) { colorClass = 'text-yellow-500'; trackClass = 'text-yellow-500/10'; }
+  if (score >= 75) { colorClass = 'text-green-500'; trackClass = 'text-green-500/10'; }
+
+  return (
+    <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+      <svg className="transform -rotate-90 w-full h-full">
+        <circle
+          className={trackClass}
+          strokeWidth={strokeWidth}
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+        <circle
+          className={`${colorClass} transition-all duration-1000 ease-out`}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          stroke="currentColor"
+          fill="transparent"
+          r={radius}
+          cx={size / 2}
+          cy={size / 2}
+        />
+      </svg>
+      <div className="absolute flex flex-col items-center justify-center text-center">
+        <span className={`font-mono font-bold leading-none ${colorClass}`} style={{ fontSize: size * 0.3 }}>
+            {score}
+        </span>
+      </div>
+    </div>
+  );
+};
+
 // Helper to translate technical terms to Chinese
 const translateTerm = (term: string | undefined): string => {
   if (!term) return '计算中...';
-  
   const lower = term.toLowerCase();
-  
-  // Market Structure Translations
   if (lower.includes('bullish')) {
       if (lower.includes('correction')) return '多头回调 (Bullish Correction)';
       return '多头结构 (Bullish)';
@@ -53,8 +96,19 @@ const translateTerm = (term: string | undefined): string => {
   if (lower.includes('neutral')) return '中性观望 (Neutral)';
   if (lower.includes('oversold')) return '超卖反弹 (Oversold)';
   if (lower.includes('overbought')) return '超买回调 (Overbought)';
-  
-  return term; // Fallback to original if no match
+  return term; 
+};
+
+// Helper to determine verdict color style robustly
+const getVerdictStyle = (verdict: string) => {
+    const v = verdict.toLowerCase();
+    if (v.includes('看多') || v.includes('buy') || v.includes('bull') || v.includes('long')) {
+        return 'bg-green-900/30 text-green-500 border border-green-500/20';
+    }
+    if (v.includes('看空') || v.includes('sell') || v.includes('bear') || v.includes('short')) {
+        return 'bg-red-900/30 text-red-500 border border-red-500/20';
+    }
+    return 'bg-gray-800 text-gray-400 border border-gray-700';
 };
 
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, onAnalyze, symbol }) => {
@@ -85,15 +139,15 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
         <div className="relative">
           <div className="flex gap-2">
             <Globe className="w-12 h-12 text-blue-500 animate-pulse" />
-            <BrainCircuit className="w-12 h-12 text-purple-500 animate-pulse" />
+            <ShieldAlert className="w-12 h-12 text-red-500 animate-pulse" />
           </div>
         </div>
         <h3 className="text-xl font-bold text-white mt-6 mb-2">执行机构级分析协议...</h3>
         <p className="text-gray-400 text-center max-w-xs text-xs space-y-2 font-mono">
-          <span className="flex items-center gap-2 justify-center text-blue-400"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 全网资讯广搜与精炼 (Wide Mining & Refining)</span>
+          <span className="flex items-center gap-2 justify-center text-purple-400"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> 全景态势感知 (Situational Awareness)</span>
+          <span className="flex items-center gap-2 justify-center text-blue-400"><span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> 全网资讯广搜与精炼 (Mining)</span>
           <span className="flex items-center gap-2 justify-center text-yellow-400"><span className="w-1.5 h-1.5 rounded-full bg-yellow-500"></span> 市场结构 & 趋势共振 (MTF Resonance)</span>
-          <span className="flex items-center gap-2 justify-center text-purple-400"><span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> 逻辑对抗 (Red Teaming)</span>
-          <span className="flex items-center gap-2 justify-center text-green-400"><span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> 风险建模 (Risk Modeling)</span>
+          <span className="flex items-center gap-2 justify-center text-red-400"><span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Gemini 红队对抗 (Red Teaming)</span>
         </p>
       </div>
     );
@@ -108,13 +162,12 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
         <div className="bg-trade-bg p-6 rounded-full mb-6 border border-gray-800 shadow-2xl group-hover:scale-110 transition-transform duration-300 relative flex items-center justify-center gap-3">
             <Bot className="w-8 h-8 text-blue-500" />
             <div className="w-px h-8 bg-gray-700"></div>
-            <BrainCircuit className="w-8 h-8 text-purple-500" />
+            <ShieldAlert className="w-8 h-8 text-red-500" />
         </div>
         
-        <h3 className="text-2xl font-bold text-white mb-6">AI 双核严谨分析</h3>
+        <h3 className="text-2xl font-bold text-white mb-6">Gemini 双重人格对抗</h3>
         
         <div className="w-full max-w-[320px] space-y-3 mb-8">
-             {/* Model 1: Gemini */}
              <div className="flex items-center justify-between p-3 rounded-lg bg-blue-500/5 border border-blue-500/10 group-hover:border-blue-500/30 transition-colors">
                  <div className="flex items-center gap-3">
                     <div className="p-1.5 rounded-md bg-blue-500/10">
@@ -126,37 +179,35 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     </div>
                  </div>
                  <div className="text-[9px] font-medium text-blue-300 bg-blue-500/10 px-2 py-1 rounded border border-blue-500/20 uppercase tracking-wide">
-                    数据聚合中枢 (Data Aggregator)
+                    首席分析师 (Analyst)
                  </div>
              </div>
 
-             {/* Connector */}
              <div className="flex justify-center -my-2 relative z-10">
                 <div className="bg-gray-800 text-[10px] text-gray-500 px-2 py-0.5 rounded-full border border-gray-700 shadow-sm">
-                    +
+                    VS
                 </div>
              </div>
 
-             {/* Model 2: DeepSeek */}
-             <div className="flex items-center justify-between p-3 rounded-lg bg-purple-500/5 border border-purple-500/10 group-hover:border-purple-500/30 transition-colors">
+             <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/5 border border-red-500/10 group-hover:border-red-500/30 transition-colors">
                  <div className="flex items-center gap-3">
-                    <div className="p-1.5 rounded-md bg-purple-500/10">
-                        <BrainCircuit className="w-4 h-4 text-purple-400" />
+                    <div className="p-1.5 rounded-md bg-red-500/10">
+                        <ShieldAlert className="w-4 h-4 text-red-400" />
                     </div>
                     <div className="flex flex-col text-left">
-                        <span className="text-xs font-bold text-purple-100">DeepSeek R1</span>
-                         <span className="text-[9px] text-purple-400/60 font-mono">Core B</span>
+                        <span className="text-xs font-bold text-red-100">Gemini 3 Pro</span>
+                         <span className="text-[9px] text-red-400/60 font-mono">Core B</span>
                     </div>
                  </div>
-                 <div className="text-[9px] font-medium text-purple-300 bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20 uppercase tracking-wide">
-                    逻辑对抗核心 (Red Teaming Logic)
+                 <div className="text-[9px] font-medium text-red-300 bg-red-500/10 px-2 py-1 rounded border border-red-500/20 uppercase tracking-wide">
+                    红队风控 (Critic/Red Team)
                  </div>
              </div>
         </div>
 
         <p className="text-gray-400 text-sm mb-8 max-w-[280px] leading-relaxed">
-            为 <span className="text-white font-bold">{symbol}</span> 启动逻辑对抗验证。<br/>
-            包含市场结构分析、风险数学计算与大师博弈。
+            为 <span className="text-white font-bold">{symbol}</span> 启动全景态势感知。<br/>
+            分析师构建策略，红队寻找漏洞。
         </p>
         
         <button 
@@ -172,18 +223,15 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
 
   const isBuy = analysis.signal === SignalType.BUY;
   const isSell = analysis.signal === SignalType.SELL;
-  
   const signalColor = isBuy ? 'text-trade-up' : isSell ? 'text-trade-down' : 'text-gray-400';
   const SignalIcon = isBuy ? TrendingUp : isSell ? TrendingDown : Minus;
   
-  // Dynamic color for market structure
   const structureColor = 
     analysis.marketStructure?.includes('Bullish') ? 'text-green-400 border-green-500/30 bg-green-500/10' :
     analysis.marketStructure?.includes('Bearish') ? 'text-red-400 border-red-500/30 bg-red-500/10' :
     analysis.marketStructure?.includes('Ranging') ? 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10' :
     'text-blue-400 border-blue-500/30 bg-blue-500/10';
 
-  // Calculate prediction range percentage
   let predictionPercentage = 50;
   if (analysis.futurePrediction && analysis.realTimePrice) {
       const { targetLow, targetHigh } = analysis.futurePrediction;
@@ -200,16 +248,15 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
           <div className="absolute inset-0 bg-trade-panel/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity duration-300">
              <div className="bg-gray-900/90 p-4 rounded-xl border border-gray-700 shadow-2xl flex flex-col items-center">
                 <Loader2 className="w-8 h-8 text-purple-500 animate-spin mb-2" />
-                <p className="text-xs text-white font-bold">DeepSeek 正在进行逻辑红蓝对抗...</p>
+                <p className="text-xs text-white font-bold">Gemini Critic 正在进行逻辑红蓝对抗...</p>
              </div>
           </div>
         )}
 
-        {/* --- HEADER: SIGNAL & STRUCTURE --- */}
-        <div className="flex justify-between items-start mb-4 z-10 border-b border-gray-800 pb-4">
+        {/* --- ZONE 1: DASHBOARD (SIGNAL & WIN RATE) --- */}
+        <div className="flex justify-between items-start mb-5 z-10 border-b border-gray-800 pb-5">
           <div>
             <div className="flex items-center gap-2 mb-2">
-                 {/* TRANSLATED MARKET STRUCTURE */}
                  <div className={`text-[10px] px-2 py-0.5 rounded font-bold border uppercase flex items-center gap-1.5 ${structureColor}`}>
                     <Layers className="w-3 h-3" /> {translateTerm(analysis.marketStructure)}
                  </div>
@@ -223,169 +270,199 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
               {analysis.signal}
             </div>
             
-            <div className="mt-2 flex items-center gap-2 text-xs">
-                <span className="text-gray-500">胜率置信度:</span>
-                <div className="h-1.5 w-16 bg-gray-800 rounded-full overflow-hidden">
-                    <div 
-                        className={`h-full rounded-full ${isBuy ? 'bg-green-500' : isSell ? 'bg-red-500' : 'bg-gray-500'}`} 
-                        style={{ width: `${analysis.winRate}%` }}
-                    ></div>
+            <div className="mt-2 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500">严谨胜率:</span>
+                    <div className="h-1.5 w-16 bg-gray-800 rounded-full overflow-hidden">
+                        <div 
+                            className={`h-full rounded-full ${isBuy ? 'bg-green-500' : isSell ? 'bg-red-500' : 'bg-gray-500'}`} 
+                            style={{ width: `${analysis.winRate}%` }}
+                        ></div>
+                    </div>
+                    <span className="font-bold text-gray-300">{analysis.winRate}%</span>
                 </div>
-                <span className="font-bold text-gray-300">{analysis.winRate}%</span>
+                
+                {/* Win Rate Attribution (Linkage) */}
+                {analysis.confidenceDrivers && analysis.confidenceDrivers.length > 0 && (
+                     <div className="flex flex-col gap-1 pl-1 border-l-2 border-gray-800">
+                        {analysis.confidenceDrivers.map((driver, i) => (
+                             <span key={i} className={`text-[9px] font-mono flex items-center gap-1 ${driver.includes('+') ? 'text-green-400' : driver.includes('-') ? 'text-red-400' : 'text-gray-500'}`}>
+                                {driver.includes('+') ? <TrendingUp className="w-2.5 h-2.5"/> : driver.includes('-') ? <TrendingDown className="w-2.5 h-2.5"/> : <Activity className="w-2.5 h-2.5"/>}
+                                {driver}
+                             </span>
+                        ))}
+                     </div>
+                )}
             </div>
           </div>
 
           <div className="text-right flex flex-col items-end gap-2">
               <div className="flex flex-col items-end gap-0.5">
                   <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                      <History className="w-3 h-3" /> 历史模拟胜率
+                      <History className="w-3 h-3" /> 历史复盘胜率
                   </div>
                   <span className="text-lg font-mono font-bold text-blue-400">{analysis.historicalWinRate}%</span>
               </div>
-              
               <div className="text-[9px] text-gray-600 bg-gray-800/50 px-1.5 py-0.5 rounded border border-gray-700/50">
-                  Risk/Reward: <span className="text-gray-300">{analysis.riskRewardRatio}:1</span>
+                  R/R: <span className="text-gray-300">{analysis.riskRewardRatio}:1</span>
               </div>
           </div>
         </div>
 
-        {/* --- NEW: TREND RESONANCE BAR --- */}
-        {analysis.trendResonance && (
-          <div className="mb-4 z-10 flex items-center gap-2 bg-blue-500/5 border border-blue-500/10 px-3 py-2 rounded-lg">
-             <GitMerge className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-             <div className="flex flex-col w-full">
-                <span className="text-[9px] text-blue-400 uppercase font-bold">趋势共振 (MTF Resonance)</span>
-                <span className="text-xs text-blue-200 font-medium truncate">{analysis.trendResonance}</span>
-             </div>
-          </div>
+        {/* --- ZONE 2: MARKET RADAR (SITUATIONAL AWARENESS) --- */}
+        {analysis.marketRegime && (
+            <div className="mb-5 grid grid-cols-3 gap-2">
+                <RadarItem 
+                    label="宏观风向 (Macro)" 
+                    value={analysis.marketRegime.macroTrend} 
+                    icon={<Globe className="w-3 h-3"/>}
+                    color={analysis.marketRegime.macroTrend.includes('Risk-On') ? 'text-green-400' : analysis.marketRegime.macroTrend.includes('Risk-Off') ? 'text-red-400' : 'text-gray-400'}
+                />
+                <RadarItem 
+                    label="板块协同 (Sector)" 
+                    value={analysis.marketRegime.sectorPerformance} 
+                    icon={<BarChart4 className="w-3 h-3"/>}
+                    color={analysis.marketRegime.sectorPerformance.includes('Strong') ? 'text-green-400' : analysis.marketRegime.sectorPerformance.includes('Divergent') ? 'text-yellow-400' : 'text-gray-400'}
+                />
+                 <RadarItem 
+                    label="机构足迹 (Flow)" 
+                    value={analysis.marketRegime.institutionalAction} 
+                    icon={<Users className="w-3 h-3"/>}
+                    color={analysis.marketRegime.institutionalAction.includes('Accumulation') ? 'text-green-400' : analysis.marketRegime.institutionalAction.includes('Distribution') ? 'text-red-400' : 'text-gray-400'}
+                />
+            </div>
         )}
 
-        {/* --- LOGIC CORE: DEEPSEEK TERMINAL --- */}
-        <div className="mb-4 z-10 group relative">
-            <div className="flex items-center justify-between mb-1.5 px-1">
-                <div className="flex items-center gap-1.5 text-purple-400 text-[10px] font-bold uppercase">
-                    <Terminal className="w-3 h-3" /> DeepSeek 逻辑对抗输出 (Red Teaming)
+        {/* --- ZONE 3: INTELLIGENCE (DRIVERS & RESONANCE) --- */}
+        <div className="space-y-2 mb-5">
+             {analysis.trendResonance && (
+                <div className="flex items-center gap-2 bg-blue-500/5 border border-blue-500/10 px-3 py-2 rounded-lg">
+                    <GitMerge className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                    <div className="flex flex-col w-full">
+                        <span className="text-[9px] text-blue-400 uppercase font-bold">趋势共振 (MTF Resonance)</span>
+                        <span className="text-xs text-blue-200 font-medium truncate">{analysis.trendResonance}</span>
+                    </div>
                 </div>
-                <div className="text-[9px] text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
-                    Logic Fusion: {analysis.modelFusionConfidence}%
+            )}
+        </div>
+
+        {/* --- ZONE 4: BATTLEFIELD (LOGIC CORE) --- */}
+        <div className="mb-5 z-10 group relative">
+            <div className="flex items-center justify-between mb-2 px-1">
+                <div className="flex items-center gap-2">
+                     <div className="p-1.5 bg-red-500/10 rounded-lg border border-red-500/20">
+                        <Terminal className="w-4 h-4 text-red-400" />
+                     </div>
+                     <div className="flex flex-col">
+                        <span className="text-red-100 text-[10px] font-bold uppercase">Gemini 3 Pro (Critic)</span>
+                        <span className="text-[9px] text-red-400/60 font-mono">Red Teaming Protocol</span>
+                     </div>
+                </div>
+                
+                {/* Visual Confidence Meter */}
+                <div className="flex items-center gap-3 bg-[#0b1215] px-3 py-1.5 rounded-lg border border-gray-800 shadow-sm">
+                    <div className="flex flex-col items-end">
+                        <span className="text-[9px] text-gray-400 font-bold uppercase">AI Confidence</span>
+                        <span className="text-[8px] text-gray-500">Model Fusion</span>
+                    </div>
+                    <RadialProgress score={analysis.modelFusionConfidence} />
                 </div>
             </div>
-            <div className="bg-[#0f111a] p-3 rounded-lg border border-purple-500/20 font-mono text-[10px] text-purple-200/90 leading-relaxed shadow-inner overflow-hidden relative min-h-[60px]">
-                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-purple-500/0 via-purple-500/50 to-purple-500/0"></div>
-                {/* Typewriter Effect for "Simulation" feel */}
-                <Typewriter text={analysis.deepSeekReasoning} speed={10} />
+            
+            <div className="bg-[#0f111a] p-3 rounded-lg border border-red-500/20 font-mono text-[10px] text-red-200/90 leading-relaxed shadow-inner overflow-hidden relative min-h-[60px]">
+                <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-gradient-to-b from-red-500/0 via-red-500/50 to-red-500/0"></div>
+                <Typewriter text={analysis.redTeamingLogic} speed={10} />
             </div>
         </div>
 
-        {/* --- EXECUTION: LEVELS & FUTURE --- */}
-        <div className="grid grid-cols-2 gap-3 mb-4 z-10">
-          
-          {/* Market Context / Key Levels */}
-          <div className="col-span-2 grid grid-cols-2 gap-3 bg-[#0b1215] p-2.5 rounded-lg border border-gray-800">
-             <div className="flex flex-col border-r border-gray-800 pr-2">
-                 <span className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
-                    <Unlock className="w-3 h-3 text-red-500/50" /> 阻力位 (Res)
-                 </span>
-                 <span className="text-sm font-mono text-red-300 font-medium">
-                    {formatCurrency(analysis.resistanceLevel || 0)}
-                 </span>
-             </div>
-             <div className="flex flex-col pl-2">
-                 <span className="text-[9px] text-gray-500 uppercase font-bold mb-1 flex items-center gap-1">
-                    <Lock className="w-3 h-3 text-green-500/50" /> 支撑位 (Sup)
-                 </span>
-                 <span className="text-sm font-mono text-green-300 font-medium">
-                    {formatCurrency(analysis.supportLevel || 0)}
-                 </span>
-             </div>
-          </div>
-
-          {/* New Entry Strategy Card */}
-          <div className="col-span-2 bg-blue-500/5 p-2.5 rounded-lg border border-blue-500/10 hover:bg-blue-500/10 transition-colors flex items-center justify-between">
-            <div className="flex flex-col">
-                <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase mb-1">
-                    <Navigation className="w-3 h-3" /> 建议入场 (Entry)
+        {/* --- ZONE 5: EXECUTION MAP --- */}
+        <div className="mb-5">
+            <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-2 flex items-center gap-2 px-1">
+                <Crosshair className="w-3 h-3" /> 交易执行 (Execution Map)
+            </h3>
+            
+            <div className="grid grid-cols-2 gap-3 mb-3">
+                 {/* Entry Strategy */}
+                <div className="col-span-2 bg-blue-500/5 p-2.5 rounded-lg border border-blue-500/10 flex items-center justify-between">
+                    <div className="flex flex-col">
+                        <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase mb-1">
+                            <Navigation className="w-3 h-3" /> 建议入场 (Entry)
+                        </div>
+                        <div className="text-xs font-mono font-medium text-blue-200">
+                            {analysis.entryStrategy || "等待信号 (Wait)"}
+                        </div>
+                    </div>
+                    <div className="text-lg font-mono font-bold text-white">
+                        {formatCurrency(analysis.entryPrice)}
+                    </div>
                 </div>
-                <div className="text-xs font-mono font-medium text-blue-200">
-                    {analysis.entryStrategy || "等待信号 (Wait)"}
+
+                <div className="bg-green-500/5 p-2.5 rounded-lg border border-green-500/10">
+                    <div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase mb-1">
+                    <Target className="w-3 h-3" /> 止盈目标 (TP)
+                    </div>
+                    <div className="text-base font-mono font-bold text-white">{formatCurrency(analysis.takeProfit)}</div>
+                </div>
+
+                <div className="bg-red-500/5 p-2.5 rounded-lg border border-red-500/10">
+                    <div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase mb-1">
+                    <ShieldAlert className="w-3 h-3" /> 止损保护 (SL)
+                    </div>
+                    <div className="text-base font-mono font-bold text-white">{formatCurrency(analysis.stopLoss)}</div>
                 </div>
             </div>
-            <div className="text-lg font-mono font-bold text-white">
-                {formatCurrency(analysis.entryPrice)}
-            </div>
-          </div>
 
-          <div className="bg-green-500/5 p-2.5 rounded-lg border border-green-500/10 hover:bg-green-500/10 transition-colors">
-            <div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase mb-1">
-              <Target className="w-3 h-3" /> 止盈目标 (TP)
-            </div>
-            <div className="text-base font-mono font-bold text-white">{formatCurrency(analysis.takeProfit)}</div>
-          </div>
-
-          <div className="bg-red-500/5 p-2.5 rounded-lg border border-red-500/10 hover:bg-red-500/10 transition-colors">
-            <div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase mb-1">
-              <ShieldAlert className="w-3 h-3" /> 止损保护 (SL)
-            </div>
-            <div className="text-base font-mono font-bold text-white">{formatCurrency(analysis.stopLoss)}</div>
-          </div>
-        </div>
-
-        {/* --- FUTURE OUTLOOK --- */}
-        {analysis.futurePrediction && (
-          <div className="mb-4 z-10 bg-[#1a202c]/50 border border-gray-700 rounded-lg p-3">
-              <div className="flex items-center justify-between mb-2">
-                 <div className="flex items-center gap-1.5 text-blue-300 text-[10px] font-bold uppercase">
-                    <Activity className="w-3 h-3" /> 预测区间 ({analysis.futurePrediction.predictionPeriod})
+            {/* Key Levels & Future */}
+            <div className="grid grid-cols-2 gap-3">
+                 <div className="col-span-2 md:col-span-1 grid grid-cols-2 gap-2 bg-[#0b1215] p-2 rounded-lg border border-gray-800">
+                     <div className="flex flex-col border-r border-gray-800 pr-2 text-center">
+                         <span className="text-[9px] text-gray-500 uppercase font-bold mb-0.5">阻力 (Res)</span>
+                         <span className="text-xs font-mono text-red-300">{formatCurrency(analysis.resistanceLevel || 0)}</span>
+                     </div>
+                     <div className="flex flex-col pl-2 text-center">
+                         <span className="text-[9px] text-gray-500 uppercase font-bold mb-0.5">支撑 (Sup)</span>
+                         <span className="text-xs font-mono text-green-300">{formatCurrency(analysis.supportLevel || 0)}</span>
+                     </div>
                  </div>
-                 <span className="text-[9px] text-gray-400 font-mono">
-                    Conf: {analysis.futurePrediction.confidence}%
-                 </span>
-              </div>
-              <div className="flex items-center justify-between text-xs font-mono">
-                  <span className="text-gray-400">{formatCurrency(analysis.futurePrediction.targetLow)}</span>
-                  
-                  {/* Visual Range Bar */}
-                  <div className="flex-1 mx-3 h-1.5 bg-gray-700 rounded-full relative">
-                      {/* Range fill (optional, subtle gradient) */}
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent rounded-full"></div>
-                      
-                      {/* Current Price Dot */}
-                      <div 
-                        className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-blue-400 border border-white rounded-full shadow-lg transition-all duration-1000 ease-out"
-                        style={{ left: `${predictionPercentage}%` }}
-                        title="当前价格位置"
-                      ></div>
-                  </div>
 
-                  <span className="text-gray-400">{formatCurrency(analysis.futurePrediction.targetHigh)}</span>
-              </div>
-          </div>
-        )}
+                 {/* Future Range */}
+                 {analysis.futurePrediction && (
+                    <div className="col-span-2 md:col-span-1 bg-[#1a202c]/50 border border-gray-700 rounded-lg p-2 flex flex-col justify-center">
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[9px] text-blue-300 font-bold uppercase flex gap-1"><Activity className="w-3 h-3"/> 预测区间</span>
+                            <span className="text-[9px] text-gray-400 font-mono">{analysis.futurePrediction.confidence}%</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] font-mono">
+                            <span className="text-gray-400">{formatCurrency(analysis.futurePrediction.targetLow)}</span>
+                            <div className="flex-1 mx-2 h-1 bg-gray-700 rounded-full relative">
+                                <div className="absolute top-1/2 -translate-y-1/2 w-2 h-2 bg-blue-400 border border-white rounded-full shadow-lg" style={{ left: `${predictionPercentage}%` }}></div>
+                            </div>
+                            <span className="text-gray-400">{formatCurrency(analysis.futurePrediction.targetHigh)}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
 
-        {/* --- GURU COUNCIL & REASONING --- */}
+        {/* --- ZONE 6: COUNCIL (GURUS) --- */}
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-3">
-             {/* Reasoning Text */}
             <div className="bg-[#0b1215]/50 p-3 rounded-lg border border-gray-800">
-                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-2 flex items-center gap-2">
-                    <ListChecks className="w-3 h-3" /> 最终操作建议
-                </h3>
                 <p className="text-xs text-gray-300 leading-relaxed font-light whitespace-pre-wrap">
                     {analysis.reasoning}
                 </p>
             </div>
 
-            {/* Guru List - Grid Layout */}
             <div>
-                 <div className="text-[10px] text-gray-600 font-bold uppercase px-1 mb-1.5">大师博弈 (Council)</div>
+                 <div className="text-[10px] text-gray-600 font-bold uppercase px-1 mb-1.5 flex items-center justify-between">
+                    <span>大师复盘 (Council)</span>
+                    <Users className="w-3 h-3" />
+                 </div>
                  <div className="grid grid-cols-2 gap-2">
                     {analysis.guruInsights && analysis.guruInsights.map((guru, idx) => (
                         <div key={idx} className="bg-[#0b1215]/40 border border-gray-800/30 p-2 rounded flex flex-col gap-1.5 hover:bg-gray-800/40 transition-colors">
                             <div className="flex items-center justify-between">
                                 <span className="text-[9px] font-bold text-gray-400 truncate">{guru.name}</span>
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${
-                                    guru.verdict === '看多' ? 'bg-green-900/30 text-green-500' : 
-                                    guru.verdict === '看空' ? 'bg-red-900/30 text-red-500' : 'bg-gray-800 text-gray-500'
-                                }`}>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${getVerdictStyle(guru.verdict)}`}>
                                     {guru.verdict}
                                 </span>
                             </div>
@@ -408,6 +485,15 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
     </div>
   );
 };
+
+const RadarItem = ({ label, value, icon, color }: any) => (
+    <div className="bg-gray-800/30 rounded-lg p-2 border border-gray-800 flex flex-col gap-1">
+        <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">
+            {icon} {label}
+        </div>
+        <div className={`text-[10px] font-bold truncate ${color}`}>{value}</div>
+    </div>
+);
 
 const RefreshCcwIcon = ({className}: {className?: string}) => (
   <svg className={className} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
