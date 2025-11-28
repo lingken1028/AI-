@@ -632,23 +632,38 @@ const App: React.FC = () => {
   );
 };
 
-// FIX: Allow ReactNode for tooltip content to support structured data (lists/html)
-const StatCard = ({ label, value, color, icon, tooltip }: { label: string, value: string, color: string, icon: React.ReactNode, tooltip?: React.ReactNode }) => (
-  <div className="bg-[#151c24] p-5 rounded-xl border border-gray-800 hover:border-gray-700 transition-all hover:shadow-lg group relative cursor-default">
-    <div className="text-[10px] uppercase font-bold text-gray-500 mb-2 flex items-center gap-2">
-        <span className="p-1 bg-gray-800 rounded group-hover:bg-gray-700 transition-colors">{icon}</span>
-        {label}
-        {tooltip && <HelpCircle className="w-3 h-3 text-gray-600 hover:text-white cursor-help ml-auto" />}
+// FIX: Interactive Tooltip (Click to toggle + Hover)
+const StatCard = ({ label, value, color, icon, tooltip }: { label: string, value: string, color: string, icon: React.ReactNode, tooltip?: React.ReactNode }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+
+  return (
+    <div 
+      className="bg-[#151c24] p-5 rounded-xl border border-gray-800 hover:border-gray-700 transition-all hover:shadow-lg group relative cursor-pointer active:scale-[0.98] select-none"
+      onClick={() => setShowTooltip(!showTooltip)}
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <div className="text-[10px] uppercase font-bold text-gray-500 mb-2 flex items-center gap-2 justify-between">
+          <div className="flex items-center gap-2">
+            <span className="p-1 bg-gray-800 rounded group-hover:bg-gray-700 transition-colors">{icon}</span>
+            {label}
+          </div>
+          {tooltip && <HelpCircle className={`w-3 h-3 transition-colors ${showTooltip ? 'text-white' : 'text-gray-600 group-hover:text-gray-400'}`} />}
+      </div>
+      <div className={`text-2xl font-mono font-medium tracking-tight ${color}`}>{value}</div>
+      
+      {/* Tooltip */}
+      {tooltip && (
+          <div 
+            className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-gray-900 border border-gray-700 text-[10px] text-gray-300 rounded shadow-xl transition-all z-20 leading-relaxed ${showTooltip ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2'}`}
+            onClick={(e) => e.stopPropagation()} // Prevent close on click inside
+          >
+              <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-gray-900 border-b border-r border-gray-700 rotate-45"></div>
+              {tooltip}
+          </div>
+      )}
     </div>
-    <div className={`text-2xl font-mono font-medium tracking-tight ${color}`}>{value}</div>
-    
-    {/* Tooltip */}
-    {tooltip && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-gray-900 border border-gray-700 text-[10px] text-gray-300 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 leading-relaxed">
-            {tooltip}
-        </div>
-    )}
-  </div>
-);
+  );
+};
 
 export default App;

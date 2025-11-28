@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis } from '../types';
 import { formatCurrency } from '../constants';
@@ -105,7 +106,7 @@ const TrinityConsensusCard = ({ consensus, smartMoney }: { consensus: TrinityCon
     const getVerdictColor = (v: string) => v.includes('STRONG') ? 'text-green-400 bg-green-500/10 border-green-500/30' : v.includes('DIVERGENCE') ? 'text-red-400 bg-red-500/10 border-red-500/30' : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
     
     return (
-        <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden mb-4 group hover:border-blue-500/20 transition-colors">
+        <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
              <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Scale className="w-20 h-20 text-blue-500"/></div>
              
              <div className="flex justify-between items-start mb-4 border-b border-gray-800/50 pb-2">
@@ -359,6 +360,10 @@ const AnalysisLoadingState = () => {
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, onAnalyze, symbol }) => {
   const isInitialLoading = loading && !analysis;
   const isRefreshing = loading && !!analysis;
+  
+  // Header Tooltip States
+  const [showWinRateTip, setShowWinRateTip] = useState(false);
+  const [showHistoryTip, setShowHistoryTip] = useState(false);
 
   if (error && !analysis) {
       return (
@@ -466,14 +471,27 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
             
             {/* 2. DRIVERS */}
             <div className="mt-4 flex flex-col gap-2">
-                <div className="flex items-center gap-3 text-xs group relative">
-                    <div className="text-gray-500 font-bold uppercase text-[10px] tracking-wide border-b border-dotted border-gray-600 flex items-center gap-1 cursor-help">
-                        胜率推演 (Calculated Win Rate)
+                <div 
+                    className="flex items-center gap-3 text-xs group relative cursor-pointer"
+                    onClick={() => setShowWinRateTip(!showWinRateTip)}
+                    onMouseEnter={() => setShowWinRateTip(true)}
+                    onMouseLeave={() => setShowWinRateTip(false)}
+                >
+                    <div className="text-gray-500 font-bold uppercase text-[10px] tracking-wide border-b border-dotted border-gray-600 flex items-center gap-1">
+                        胜率推演 (Calculated Win Rate) <HelpCircle className="w-3 h-3 text-gray-600 group-hover:text-blue-400"/>
                     </div>
                     <div className="h-2 w-24 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
                         <div className={`h-full rounded-full transition-all duration-1000 ${isBuy ? 'bg-green-500' : isSell ? 'bg-red-500' : 'bg-gray-500'}`} style={{ width: `${analysis.winRate}%` }}></div>
                     </div>
                     <span className="font-mono font-bold text-white text-lg">{analysis.winRate}%</span>
+                    
+                    {/* Header Tooltip */}
+                     {showWinRateTip && (
+                        <div className="absolute top-full left-0 mt-2 w-56 bg-gray-900 border border-gray-700 p-3 rounded-lg z-50 text-[10px] text-gray-300 shadow-xl pointer-events-none">
+                            <strong className="text-white block mb-1">胜率计算逻辑</strong>
+                            <p className="leading-relaxed opacity-80">综合技术指标、主力资金、市场情绪及宏观环境四维因子加权计算得出。</p>
+                        </div>
+                    )}
                 </div>
                 
                 {/* Score Drivers Grid */}
@@ -492,11 +510,25 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
           </div>
           
           <div className="text-right flex flex-col items-end gap-3">
-              <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col items-end gap-1 group relative cursor-help">
+              <div 
+                  className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col items-end gap-1 group relative cursor-pointer hover:border-blue-500/30 transition-colors"
+                  onClick={() => setShowHistoryTip(!showHistoryTip)}
+                  onMouseEnter={() => setShowHistoryTip(true)}
+                  onMouseLeave={() => setShowHistoryTip(false)}
+              >
                   <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase tracking-wider">
                     <History className="w-3 h-3" /> 历史模式回测
+                    <HelpCircle className="w-3 h-3 text-gray-700 group-hover:text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"/>
                   </div>
                   <span className="text-2xl font-mono font-medium text-blue-400">{analysis.historicalWinRate}%</span>
+                  
+                   {/* History Tooltip */}
+                   {showHistoryTip && (
+                        <div className="absolute top-full right-0 mt-2 w-56 bg-gray-900 border border-gray-700 p-3 rounded-lg z-50 text-[10px] text-gray-300 shadow-xl pointer-events-none text-left">
+                            <strong className="text-white block mb-1">模式回测说明</strong>
+                            <p className="leading-relaxed opacity-80">系统检索了过去 5 年中与当前 K 线形态相似度超过 85% 的历史行情，统计其后续上涨概率。</p>
+                        </div>
+                    )}
               </div>
               <div className="flex items-center gap-2 bg-[#0b1215] px-3 py-1.5 rounded-lg border border-gray-800/50"><span className="text-[9px] text-gray-500 font-bold uppercase">盈亏比 (R/R)</span><span className="text-xs font-mono font-bold text-white">{analysis.riskRewardRatio}:1</span></div>
           </div>
@@ -505,10 +537,10 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
         {/* Scrollable Content - With visual "Logic Chain" line */}
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 relative pl-2">
             
-            {/* Logic Chain Visual Guide */}
-            <div className="absolute left-0 top-2 bottom-2 w-px bg-gradient-to-b from-blue-500/0 via-blue-500/20 to-blue-500/0 hidden lg:block"></div>
+            {/* Logic Chain Visual Guide (Vertical Line) */}
+            <div className="absolute left-1.5 top-4 bottom-4 w-0.5 bg-gradient-to-b from-blue-500/0 via-blue-500/20 to-blue-500/0 hidden lg:block"></div>
             
-            <div className="space-y-6 pb-2 lg:pl-6">
+            <div className="space-y-6 pb-2 lg:pl-8">
                 {/* 3. SCENARIO DEDUCTION SECTION */}
                 {analysis.scenarios && (
                 <div className="bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
@@ -581,15 +613,19 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                 </div>
                 )}
                 
-                {/* 4. TECHNICAL & CONSENSUS LAYER (New Order) */}
+                {/* 4. EVIDENCE LAYER (Consensus + Technicals) */}
                 <div className="space-y-4">
                     
-                    {/* TRINITY CONSENSUS CARD (NEW) */}
+                    {/* TRINITY CONSENSUS CARD */}
                     {analysis.trinityConsensus && (
-                        <TrinityConsensusCard 
-                            consensus={analysis.trinityConsensus} 
-                            smartMoney={analysis.smartMoneyAnalysis} 
-                        />
+                        <div className="relative">
+                            {/* Visual connector dot */}
+                            <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-blue-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_#3b82f6]"></div>
+                            <TrinityConsensusCard 
+                                consensus={analysis.trinityConsensus} 
+                                smartMoney={analysis.smartMoneyAnalysis} 
+                            />
+                        </div>
                     )}
                 
                     {/* Technical Cockpit */}
@@ -623,25 +659,28 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                         </div>
                     )}
                     
-                    {/* Reasoning Text */}
+                    {/* Reasoning Text (Analysis Note) */}
                     <div className="bg-[#0b1215]/50 p-4 rounded-xl border border-gray-800/50 hover:border-gray-700 transition-colors">
                         <div className="flex items-center gap-2 mb-2">
                             <BrainCircuit className="w-3 h-3 text-purple-400" />
-                            <span className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">底层逻辑解析 (Analysis Notes)</span>
+                            <span className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">底层逻辑解析 (Analysis Logic)</span>
                         </div>
-                        <div className="text-xs text-gray-300/90 font-light">
-                            <Typewriter text={analysis.reasoning} speed={5} />
+                        <div className="text-xs text-gray-300/90 font-light leading-relaxed">
+                            <Typewriter text={analysis.reasoning} speed={3} />
                         </div>
                     </div>
                 </div>
 
-                {/* 5. STRATEGY BLUEPRINT & EXECUTION (MOVED DOWN) */}
+                {/* 5. STRATEGY BLUEPRINT & EXECUTION (ACTION LAYER) */}
                 {analysis.tradingSetup && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 relative">
+                        {/* Visual connector dot */}
+                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-cyan-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_cyan]"></div>
+                        
                         {/* The Blueprint */}
                         <LogicBlueprint setup={analysis.tradingSetup} />
                         
-                        {/* Execution Map (Moved Up) */}
+                        {/* Execution Map */}
                         <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 hover:border-gray-700 transition-colors">
                             <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-3 flex items-center gap-2 px-1 tracking-widest"><Crosshair className="w-3 h-3" /> 交易执行蓝图 (Execution Map)</h3>
                             <div className="grid grid-cols-2 gap-3 mb-3">
@@ -664,7 +703,10 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
 
                 {/* 6. RED TEAM CRITIC */}
                 {analysis.redTeaming && (
-                    <div>
+                    <div className="relative">
+                        {/* Visual connector dot */}
+                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-red-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_red]"></div>
+                        
                         <div className="flex items-center justify-between mb-2 px-1">
                             <div className="flex items-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-widest">
                                 <ShieldAlert className="w-3 h-3" /> 红队对抗演练 (Critic Protocol)
