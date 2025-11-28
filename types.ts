@@ -80,6 +80,21 @@ export interface MarketScenario {
     description: string;
 }
 
+// NEW: Structured Red Teaming Data
+export interface RedTeaming {
+    risks: string[];
+    mitigations: string[];
+    stressTest: string; // Scenario: "What happens if BTC drops 5%?"
+    severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+}
+
+// NEW: Structured Trading Rules
+export interface TradingSetup {
+    setupName: string; // e.g. "Wyckoff Spring"
+    confirmationTriggers: string[]; // Specific conditions to wait for
+    invalidationCriteria: string; // Strict rule to cancel trade
+}
+
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
@@ -106,16 +121,19 @@ export interface AIAnalysis {
   technicalIndicators?: TechnicalIndicators;
   institutionalData?: InstitutionalData;
 
-  // New Scenario Fields
+  // Scenario Fields
   scenarios?: {
     bullish: MarketScenario;
     bearish: MarketScenario;
     neutral: MarketScenario;
   };
   
+  // Structured Deep Analysis
+  redTeaming: RedTeaming; 
+  tradingSetup: TradingSetup;
+  
   confidenceDrivers: string[]; 
   guruInsights: GuruInsight[]; 
-  redTeamingLogic: string; 
   modelFusionConfidence: number; 
   futurePrediction?: FuturePrediction; 
   riskManagement?: RiskManagement;
@@ -129,7 +147,7 @@ export interface StockSymbol {
   currentPrice: number;
 }
 
-// Backtesting Types - OPTIMIZED STRATEGIES
+// Backtesting Types
 export enum BacktestStrategy {
   ICT_SILVER_BULLET = "ICT Silver Bullet (聪明钱时间窗)",
   VWAP_MEAN_REVERSION = "VWAP Institutional Reversion (机构均值回归)",

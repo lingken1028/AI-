@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { AIAnalysis, SignalType } from '../types';
+import { AIAnalysis, SignalType, RedTeaming, TradingSetup } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, XCircle, FileText, Anchor } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -11,7 +12,7 @@ interface AnalysisCardProps {
   symbol: string;
 }
 
-// FIX: Deterministic Typewriter to prevent character duplication stutter
+// FIX: Deterministic Typewriter
 const Typewriter = ({ text, speed = 10 }: { text: string; speed?: number }) => {
   const [displayedText, setDisplayedText] = useState('');
 
@@ -22,12 +23,9 @@ const Typewriter = ({ text, speed = 10 }: { text: string; speed?: number }) => {
     }
     
     let i = 0;
-    // Reset immediately
     setDisplayedText('');
     
     const timer = setInterval(() => {
-      // Use slice (deterministic) instead of appending (state-dependent)
-      // This prevents "double typing" issues in React Strict Mode
       setDisplayedText(text.slice(0, i));
       i++;
       if (i > text.length) {
@@ -96,7 +94,6 @@ const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string,
                  <span className="text-[9px] text-gray-600 font-mono mb-0.5">+{contribution}%</span>
             </div>
             
-            {/* Progress Bar */}
             <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mt-1">
                 <div 
                     className={`h-full rounded-full ${color.replace('text-', 'bg-')} transition-all duration-1000 ease-out`} 
@@ -107,38 +104,15 @@ const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string,
     );
 };
 
+// ** NEW: Structured Red Teaming Terminal **
+const CriticTerminal = ({ data }: { data: RedTeaming }) => {
+    if (!data) return null;
 
-// Enhanced Threat Report Parser with Terminal Aesthetic (Supports Chinese Headers)
-const CriticTerminal = ({ logic }: { logic: string }) => {
-    let threatPart = "", mitigationPart = "";
-    const raw = logic || "";
-    
-    // Robust parsing based on emojis or keywords (Supports Chinese & English headers)
-    if (raw.includes('🛡️ 应对策略:') || raw.includes('🛡️ MITIGATIONS:') || raw.includes('🛡️ 缓解措施:')) { 
-        // Find the split point
-        let splitKey = '🛡️ MITIGATIONS:';
-        if (raw.includes('🛡️ 应对策略:')) splitKey = '🛡️ 应对策略:';
-        else if (raw.includes('🛡️ 缓解措施:')) splitKey = '🛡️ 缓解措施:';
-        
-        const parts = raw.split(splitKey);
-        threatPart = parts[0]?.replace(/⚠️ (RISKS|脆弱性|风险点|风险揭示):?/i, '').trim(); 
-        mitigationPart = parts[1]?.trim(); 
-    } else { 
-        threatPart = raw; 
-        mitigationPart = ""; 
-    }
-    
-    // Clean up bullets and empty lines
-    const cleanList = (text: string) => text.split('\n')
-        .map(l => l.trim())
-        .filter(l => l.length > 0 && l !== '-')
-        .map(l => l.replace(/^[-*•]\s*/, ''));
+    const severityColor = 
+        data.severity === 'CRITICAL' ? 'text-red-500 animate-pulse' :
+        data.severity === 'HIGH' ? 'text-orange-500' :
+        data.severity === 'MODERATE' ? 'text-yellow-500' : 'text-blue-500';
 
-    const threats = cleanList(threatPart);
-    const mitigations = cleanList(mitigationPart);
-    
-    if (threats.length === 0 && mitigations.length === 0) return <div className="text-xs text-gray-500 font-mono italic p-4 text-center">暂无明显风险检出</div>;
-    
     return (
         <div className="bg-[#0c0c0c] rounded-lg border border-gray-800 p-4 font-mono text-xs relative overflow-hidden group">
             {/* Terminal Scan Line */}
@@ -146,47 +120,51 @@ const CriticTerminal = ({ logic }: { logic: string }) => {
             
             <div className="flex items-center justify-between mb-4 border-b border-gray-800 pb-2">
                 <span className="text-gray-500 font-bold uppercase flex items-center gap-2">
-                   <Terminal className="w-3 h-3 text-purple-400" />
+                   <Terminal className="w-3 h-3 text-red-400" />
                    CRITIC_PROTOCOL.LOG
                 </span>
-                <div className="flex gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-red-500/50"></span>
-                    <span className="w-2 h-2 rounded-full bg-yellow-500/50"></span>
-                    <span className="w-2 h-2 rounded-full bg-green-500/50"></span>
+                <div className="flex items-center gap-2">
+                    <span className="text-[9px] text-gray-600">THREAT_LEVEL:</span>
+                    <span className={`font-bold ${severityColor}`}>{data.severity}</span>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4">
                 {/* Risks Section */}
-                <div className="space-y-3">
-                    <div className="text-red-400 font-bold flex items-center gap-2 animate-pulse">
-                        <Siren className="w-3 h-3" />
-                        <span>DETECTED_RISKS (潜在风险)</span>
+                <div className="space-y-2">
+                    <div className="text-red-400 font-bold flex items-center gap-2">
+                        <AlertTriangle className="w-3 h-3" />
+                        <span>DETECTED_RISKS (风险点)</span>
                     </div>
-                    <ul className="space-y-2">
-                        {threats.map((t, i) => (
-                            <li key={i} className="flex gap-3 text-red-200/80 leading-relaxed group-hover:text-red-200 transition-colors">
-                                <span className="text-red-500 font-bold shrink-0 opacity-50">[{i+1}]</span>
-                                <span>{t}</span>
+                    <ul className="space-y-1.5 pl-1">
+                        {data.risks.map((risk, i) => (
+                            <li key={i} className="flex gap-2 text-red-200/70 leading-relaxed group-hover:text-red-200 transition-colors">
+                                <span className="text-red-500 opacity-50">[{i+1}]</span>
+                                <span>{risk}</span>
                             </li>
                         ))}
                     </ul>
                 </div>
 
-                {/* Divider if needed */}
-                {mitigations.length > 0 && <div className="border-t border-dashed border-gray-800/50"></div>}
+                {/* Stress Test */}
+                <div className="bg-red-900/10 border border-red-500/20 p-2 rounded">
+                     <div className="text-[9px] text-red-400 font-bold uppercase mb-1 flex items-center gap-1">
+                        <Activity className="w-3 h-3" /> Stress Test (压力测试)
+                     </div>
+                     <p className="text-red-200/80 italic">"{data.stressTest}"</p>
+                </div>
 
                 {/* Mitigations Section */}
-                {mitigations.length > 0 && (
-                    <div className="space-y-3">
+                {data.mitigations && data.mitigations.length > 0 && (
+                    <div className="space-y-2 border-t border-dashed border-gray-800/50 pt-2">
                          <div className="text-blue-400 font-bold flex items-center gap-2">
                             <ShieldCheck className="w-3 h-3" />
-                            <span>MITIGATION_PROTOCOLS (应对策略)</span>
+                            <span>MITIGATION_PROTOCOLS (应对)</span>
                         </div>
-                        <ul className="space-y-2">
-                            {mitigations.map((m, i) => (
-                                <li key={i} className="flex gap-3 text-blue-200/80 leading-relaxed group-hover:text-blue-200 transition-colors">
-                                    <span className="text-blue-500 font-bold shrink-0 opacity-50">>></span>
+                        <ul className="space-y-1.5 pl-1">
+                            {data.mitigations.map((m, i) => (
+                                <li key={i} className="flex gap-2 text-blue-200/70 leading-relaxed group-hover:text-blue-200 transition-colors">
+                                    <span className="text-blue-500 opacity-50">>></span>
                                     <span>{m}</span>
                                 </li>
                             ))}
@@ -203,19 +181,74 @@ const CriticTerminal = ({ logic }: { logic: string }) => {
     );
 };
 
+// ** NEW: Trading Logic Blueprint **
+const LogicBlueprint = ({ setup }: { setup: TradingSetup }) => {
+    if (!setup) return null;
+    return (
+        <div className="bg-[#151c24] rounded-xl border border-blue-500/20 p-4 relative overflow-hidden">
+            {/* Background Grid Pattern */}
+            <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.05)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
+            
+            <div className="relative z-10">
+                <div className="flex items-center justify-between mb-4">
+                     <div className="flex items-center gap-2">
+                        <div className="p-1.5 bg-blue-500/20 rounded-md border border-blue-500/30">
+                            <Briefcase className="w-4 h-4 text-blue-400" />
+                        </div>
+                        <div>
+                            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Trading Blueprint</h3>
+                            <div className="text-[10px] text-blue-400 font-mono">{setup.setupName}</div>
+                        </div>
+                     </div>
+                     <div className="px-2 py-1 bg-blue-500/10 border border-blue-500/20 rounded text-[9px] font-bold text-blue-300">
+                        ARCHITECT MODE
+                     </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    {/* Triggers */}
+                    <div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase mb-2">
+                            <ListChecks className="w-3 h-3" /> Confirmation Triggers (确认信号)
+                        </div>
+                        <ul className="space-y-2">
+                            {setup.confirmationTriggers.map((trigger, i) => (
+                                <li key={i} className="flex items-start gap-2 text-xs text-gray-300 bg-[#0b1215] p-2 rounded border border-gray-800/50">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-green-500 shrink-0 mt-0.5" />
+                                    <span>{trigger}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    {/* Invalidation */}
+                    <div>
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500 font-bold uppercase mb-2">
+                            <XCircle className="w-3 h-3" /> Invalidation Criteria (失效条件)
+                        </div>
+                        <div className="bg-red-900/10 border border-red-500/20 p-2.5 rounded text-xs text-red-200/90 flex gap-2 items-start">
+                             <AlertTriangle className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" />
+                             {setup.invalidationCriteria}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 // ** VISUAL PIPELINE LOADING STATE **
 const AnalysisLoadingState = () => {
     const [step, setStep] = useState(0);
     const steps = [
         { id: 0, text: "正在初始化量子网络链接...", sub: "Initializing Quantum Uplink", icon: Globe, color: "text-blue-400", bg: "bg-blue-500" },
         { id: 1, text: "Gemini 3 Pro: 识别市场结构...", sub: "Scanning Market Structure (MSS)", icon: Bot, color: "text-yellow-400", bg: "bg-yellow-500" },
-        { id: 2, text: "搜索技术指标 (KDJ, RSI, Vol)...", sub: "Fetching Technical Vectors", icon: Activity, color: "text-cyan-400", bg: "bg-cyan-500" },
-        { id: 3, text: "正在推演牛熊剧本与概率...", sub: "Calculating Scenario Deductions", icon: GitCommit, color: "text-purple-400", bg: "bg-purple-500" },
+        { id: 2, text: "红队对抗演练 (Red Teaming)...", sub: "Executing Adversarial Stress Test", icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500" },
+        { id: 3, text: "构建交易逻辑蓝图...", sub: "Architecting Trading Setup", icon: Briefcase, color: "text-purple-400", bg: "bg-purple-500" },
         { id: 4, text: "正在生成最终决策报告...", sub: "Finalizing Tactical Report", icon: BrainCircuit, color: "text-green-400", bg: "bg-green-500" }
     ];
 
     useEffect(() => {
-        // Extended timings for Pro (Total ~15s)
         const timings = [3000, 3500, 3000, 2500, 3000];
         let currentStep = 0;
         const nextStep = () => {
@@ -231,11 +264,9 @@ const AnalysisLoadingState = () => {
 
     return (
       <div className="bg-[#0b1215] rounded-xl border border-gray-800 p-6 h-full flex flex-col relative overflow-hidden shadow-2xl">
-        {/* Background Grid & Effects */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_1px,transparent_1px),linear-gradient(90deg,rgba(18,18,18,0)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b1215] via-transparent to-transparent"></div>
         
-        {/* Central HUD */}
         <div className="flex-1 flex flex-col items-center justify-center relative z-10">
             <div className="relative mb-12">
                 <div className="absolute -inset-8 bg-blue-500/10 rounded-full blur-2xl animate-pulse"></div>
@@ -263,20 +294,6 @@ const AnalysisLoadingState = () => {
                     {steps[step].sub}
                 </span>
             </div>
-        </div>
-
-        {/* Terminal Log */}
-        <div className="h-32 border-t border-gray-800 pt-4 relative">
-             <div className="absolute top-0 left-0 bg-blue-500 h-[1px] w-full shadow-[0_0_10px_#3b82f6]"></div>
-             <div className="font-mono text-[10px] space-y-1.5 opacity-70">
-                {steps.map((s, idx) => (
-                    <div key={idx} className={`flex items-center gap-2 transition-all duration-500 ${idx === step ? 'text-white opacity-100 translate-x-2' : idx < step ? 'text-green-500/50' : 'text-gray-700'}`}>
-                        <span className="w-3">{idx < step ? 'OK' : idx === step ? '>' : '.'}</span>
-                        <span>{s.sub}</span>
-                        {idx === step && <span className="animate-pulse">_</span>}
-                    </div>
-                ))}
-             </div>
         </div>
       </div>
     );
@@ -374,6 +391,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
           </div>
         )}
 
+        {/* --- HEADER: SIGNAL & SCORE --- */}
         <div className="flex justify-between items-start mb-6 pb-6 border-b border-gray-800/50">
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -389,31 +407,18 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
               {analysis.signal === 'BUY' ? '做多' : analysis.signal === 'SELL' ? '做空' : '观望'}
             </div>
             
-            {/* AI WIN RATE & SCORE DRIVERS DASHBOARD */}
             <div className="mt-4 flex flex-col gap-2">
                 <div className="flex items-center gap-3 text-xs group relative">
                     <div className="text-gray-500 font-bold uppercase text-[10px] tracking-wide border-b border-dotted border-gray-600 flex items-center gap-1 cursor-help">
                         胜率推演 (Calculated Probability)
                     </div>
                     
-                    {/* Tooltip for Win Rate Calculation */}
-                    <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-72 p-4 bg-gray-900 border border-gray-700 text-gray-300 rounded shadow-xl z-50 leading-relaxed pointer-events-none">
-                        <strong className="text-white block mb-2 text-xs border-b border-gray-700 pb-1 flex items-center gap-2">
-                             <Target className="w-3 h-3 text-blue-400" />
-                             模型权重算法 (Weighted Model)
-                        </strong>
-                        <p className="text-[10px] mb-3 text-gray-400 italic">
-                            总胜率 = (技术×0.4) + (资金×0.3) + (情绪×0.2) + (宏观×0.1)
-                        </p>
-                    </div>
-
                     <div className="h-2 w-24 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
                         <div className={`h-full rounded-full transition-all duration-1000 ${isBuy ? 'bg-green-500' : isSell ? 'bg-red-500' : 'bg-gray-500'}`} style={{ width: `${analysis.winRate}%` }}></div>
                     </div>
                     <span className="font-mono font-bold text-white text-lg">{analysis.winRate}%</span>
                 </div>
                 
-                {/* NEW: VISIBLE SCORE DRIVERS (GRID LAYOUT) */}
                 {analysis.scoreDrivers && (
                     <div className="mt-3">
                         <h4 className="text-[9px] text-gray-600 font-bold uppercase mb-2 flex items-center gap-1"><Sliders className="w-3 h-3"/> 胜率归因因子 (Score Drivers)</h4>
@@ -439,204 +444,93 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
           </div>
         </div>
 
-        {/* --- SCENARIO DEDUCTION SECTION (IMPROVED) --- */}
-        {analysis.scenarios && (
-          <div className="mb-6 bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 opacity-5"><GitCommit className="w-20 h-20 text-purple-500"/></div>
-             <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
-                 <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Market Deductions)
-             </h3>
-
-             <div className="grid grid-cols-1 gap-4">
-                {/* Bullish Scenario */}
-                <div className="group">
-                   <div className="flex justify-between text-xs items-center mb-1">
-                      <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-                          <ArrowUpRight className="w-3.5 h-3.5"/> 
-                          牛市剧本 (Bullish)
-                      </span>
-                      <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                      <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
-                   </div>
-                   <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50 group-hover:border-green-500/30 transition-colors">
-                      <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
-                      <div className="text-right">
-                          <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
-                          <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
-                      </div>
-                   </div>
-                </div>
-
-                {/* Neutral Scenario */}
-                <div className="group">
-                   <div className="flex justify-between text-xs items-center mb-1">
-                      <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-                          <Minus className="w-3.5 h-3.5"/> 
-                          震荡剧本 (Neutral)
-                      </span>
-                      <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                      <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
-                   </div>
-                   <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50 group-hover:border-yellow-500/30 transition-colors">
-                      <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
-                      <div className="text-right">
-                          <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
-                          <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
-                      </div>
-                   </div>
-                </div>
-
-                {/* Bearish Scenario */}
-                <div className="group">
-                   <div className="flex justify-between text-xs items-center mb-1">
-                      <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-                          <ArrowDownRight className="w-3.5 h-3.5"/> 
-                          熊市剧本 (Bearish)
-                      </span>
-                      <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
-                   </div>
-                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                      <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
-                   </div>
-                   <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50 group-hover:border-red-500/30 transition-colors">
-                      <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
-                      <div className="text-right">
-                          <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
-                          <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
-                      </div>
-                   </div>
-                </div>
-             </div>
-          </div>
-        )}
-
-        {/* --- TECHNICAL COCKPIT --- */}
-        {analysis.technicalIndicators && (
-             <div className="mb-6 bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Cpu className="w-16 h-16 text-blue-500"/></div>
-                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
-                    <Activity className="w-3 h-3 text-blue-400" /> 技术仪表盘 (Technical Cockpit)
-                </h3>
-                
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                    {/* RSI Advanced Gauge */}
-                    <div className="flex flex-col gap-1.5">
-                         <div className="flex justify-between text-[9px] text-gray-500 font-bold uppercase">
-                            <span>RSI 相对强弱</span> 
-                            <span className={analysis.technicalIndicators.rsi > 70 ? 'text-red-400' : analysis.technicalIndicators.rsi < 30 ? 'text-green-400' : 'text-blue-400'}>
-                                {analysis.technicalIndicators.rsi}
-                            </span>
-                         </div>
-                         <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden flex relative">
-                            {/* Zones */}
-                            <div className="absolute left-0 w-[30%] h-full bg-green-500/20"></div>
-                            <div className="absolute right-0 w-[30%] h-full bg-red-500/20"></div>
-                            
-                            {/* Value Indicator */}
-                            <div 
-                                className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_white] transition-all duration-1000 z-10" 
-                                style={{ left: `${analysis.technicalIndicators.rsi}%` }}
-                            ></div>
-                         </div>
-                         <div className="flex justify-between text-[8px] text-gray-600 font-mono">
-                            <span>OVERSOLD</span>
-                            <span>NEUTRAL</span>
-                            <span>OVERBOUGHT</span>
-                         </div>
-                    </div>
-
-                    {/* KDJ Status (New) */}
-                    <div className="flex flex-col gap-1.5">
-                        <div className="text-[9px] text-gray-500 font-bold uppercase">KDJ 随机指标</div>
-                        <div className="flex items-center gap-2">
-                             {analysis.technicalIndicators.kdjStatus ? (
-                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit flex items-center gap-1
-                                    ${analysis.technicalIndicators.kdjStatus.includes('Golden') || analysis.technicalIndicators.kdjStatus.includes('金叉') ? 'text-green-400 border-green-500/30 bg-green-900/20' : 
-                                      analysis.technicalIndicators.kdjStatus.includes('Death') || analysis.technicalIndicators.kdjStatus.includes('死叉') ? 'text-red-400 border-red-500/30 bg-red-900/20' : 
-                                      'text-gray-400 border-gray-700 bg-gray-800'}`}>
-                                    {analysis.technicalIndicators.kdjStatus.includes('Golden') || analysis.technicalIndicators.kdjStatus.includes('金叉') ? <ArrowUpRight className="w-3 h-3"/> : 
-                                     analysis.technicalIndicators.kdjStatus.includes('Death') || analysis.technicalIndicators.kdjStatus.includes('死叉') ? <ArrowDownRight className="w-3 h-3"/> : <Minus className="w-3 h-3"/>}
-                                    {analysis.technicalIndicators.kdjStatus}
-                                 </span>
-                             ) : <span className="text-[10px] text-gray-600">--</span>}
-                        </div>
-                    </div>
-
-                    {/* MACD Status */}
-                    <div className="flex flex-col gap-1.5 border-t border-gray-800/50 pt-2">
-                        <div className="text-[9px] text-gray-500 font-bold uppercase">MACD 趋势动能</div>
-                        <div className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit flex items-center gap-1
-                            ${analysis.technicalIndicators.macdStatus.includes('Golden') || analysis.technicalIndicators.macdStatus.includes('金叉') ? 'text-green-400 border-green-500/30 bg-green-900/20' : 
-                              analysis.technicalIndicators.macdStatus.includes('Death') || analysis.technicalIndicators.macdStatus.includes('死叉') ? 'text-red-400 border-red-500/30 bg-red-900/20' : 
-                              'text-gray-400 border-gray-700 bg-gray-800'}`}>
-                             {analysis.technicalIndicators.macdStatus.includes('Golden') || analysis.technicalIndicators.macdStatus.includes('金叉') ? <Zap className="w-3 h-3 fill-green-400"/> : 
-                              analysis.technicalIndicators.macdStatus.includes('Death') || analysis.technicalIndicators.macdStatus.includes('死叉') ? <Zap className="w-3 h-3 fill-red-400"/> : <Activity className="w-3 h-3"/>}
-                            {analysis.technicalIndicators.macdStatus}
-                        </div>
-                    </div>
-
-                    {/* Volume Status (New) */}
-                    <div className="flex flex-col gap-1.5 border-t border-gray-800/50 pt-2">
-                        <div className="text-[9px] text-gray-500 font-bold uppercase">量能状态 (Volume)</div>
-                        <span className="text-[10px] text-white font-mono flex items-center gap-2">
-                             <BarChart2 className="w-3 h-3 text-blue-400" />
-                             {analysis.technicalIndicators.volumeStatus || "Normal"}
-                        </span>
-                    </div>
-                </div>
-
-                {/* Institutional Flow Section */}
-                {analysis.institutionalData && (
-                    <div className="mt-4 pt-3 border-t border-gray-800/50 grid grid-cols-2 gap-3 bg-[#151c24]/50 -mx-4 -mb-4 px-4 py-3">
-                         <div className="flex flex-col">
-                             <span className="text-[9px] text-gray-500 uppercase font-bold flex gap-1 items-center"><Briefcase className="w-3 h-3"/> 主力净流入</span>
-                             <span className={`text-xs font-mono font-bold ${analysis.institutionalData.netInflow.includes('-') ? 'text-red-400' : 'text-green-400'}`}>{analysis.institutionalData.netInflow}</span>
-                         </div>
-                         <div className="flex flex-col items-end">
-                             <span className="text-[9px] text-gray-500 uppercase font-bold">大单活跃度</span>
-                             <span className="text-xs font-mono text-white">{analysis.institutionalData.blockTrades}</span>
-                         </div>
-                    </div>
-                )}
-             </div>
-        )}
-
-        <div className="mb-6">
-            <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-3 flex items-center gap-2 px-1 tracking-widest"><Crosshair className="w-3 h-3" /> 交易执行蓝图 (Execution Map)</h3>
-            <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="col-span-2 bg-blue-500/5 p-3 rounded-xl border border-blue-500/20 flex items-center justify-between group hover:bg-blue-500/10 transition-colors">
-                    <div className="flex flex-col gap-1"><div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase"><Navigation className="w-3 h-3" /> 建议入场 (Entry)</div><div className="text-xs font-mono font-medium text-blue-200 opacity-80 group-hover:opacity-100">{analysis.entryStrategy || "等待信号 (Wait)"}</div></div>
-                    <div className="text-xl font-mono font-bold text-white tracking-tight">{formatCurrency(analysis.entryPrice)}</div>
-                </div>
-                <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase"><Target className="w-3 h-3" /> 止盈目标 (TP)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.takeProfit)}</div></div>
-                <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase"><ShieldAlert className="w-3 h-3" /> 止损风控 (SL)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.stopLoss)}</div></div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-                 <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800"><div className="flex justify-between items-center mb-2 border-b border-gray-800 pb-1"><span className="text-[9px] text-gray-500 uppercase font-bold">关键位 (Key Levels)</span></div><div className="flex justify-between text-xs font-mono"><span className="text-red-300">{formatCurrency(analysis.resistanceLevel || 0)}</span><span className="text-gray-600">/</span><span className="text-green-300">{formatCurrency(analysis.supportLevel || 0)}</span></div></div>
-                 {analysis.futurePrediction && (
-                    <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col justify-center"><div className="flex items-center justify-between mb-2"><span className="text-[9px] text-blue-300 font-bold uppercase flex gap-1"><Activity className="w-3 h-3"/> 预测区间</span><span className="text-[9px] text-gray-500 font-mono">{analysis.futurePrediction.confidence}%</span></div><div className="relative h-1.5 bg-gray-800 rounded-full w-full overflow-hidden"><div className="absolute top-0 bottom-0 bg-blue-500/20 w-full"></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]" style={{ left: `${predictionPercentage}%` }}></div></div><div className="flex justify-between text-[8px] font-mono text-gray-500 mt-1"><span>{formatCurrency(analysis.futurePrediction.targetLow)}</span><span>{formatCurrency(analysis.futurePrediction.targetHigh)}</span></div></div>
-                )}
-            </div>
-        </div>
-
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 space-y-4 pb-2">
             
             {/* Logic & Reasoning */}
             <div className="bg-[#0b1215]/50 p-4 rounded-xl border border-gray-800/50 hover:border-gray-700 transition-colors">
                 <div className="flex items-center gap-2 mb-2">
                     <BrainCircuit className="w-3 h-3 text-purple-400" />
-                    <span className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">底层逻辑解析 (Reasoning)</span>
+                    <span className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">底层逻辑解析 (Executive Summary)</span>
                 </div>
                 <div className="text-xs text-gray-300/90 font-light">
-                     <Typewriter text={analysis.reasoning} speed={10} />
+                     <Typewriter text={analysis.reasoning} speed={5} />
                 </div>
             </div>
 
-            {/* Red Teaming Terminal */}
+            {/* ** TRADING BLUEPRINT ** */}
+            <LogicBlueprint setup={analysis.tradingSetup} />
+
+            {/* ** SCENARIO DEDUCTION SECTION ** */}
+            {analysis.scenarios && (
+                <div className="bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2 opacity-5"><GitCommit className="w-20 h-20 text-purple-500"/></div>
+                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
+                        <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Deductions)
+                    </h3>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {/* Bullish */}
+                        <div className="group">
+                        <div className="flex justify-between text-xs items-center mb-1">
+                            <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
+                                <ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本
+                            </span>
+                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
+                            <div className="text-right">
+                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                                <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
+                            </div>
+                        </div>
+                        </div>
+                        {/* Neutral */}
+                         <div className="group">
+                        <div className="flex justify-between text-xs items-center mb-1">
+                            <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                <Minus className="w-3.5 h-3.5"/> 震荡剧本
+                            </span>
+                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
+                            <div className="text-right">
+                                <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
+                                <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
+                            </div>
+                        </div>
+                        </div>
+                        {/* Bearish */}
+                        <div className="group">
+                        <div className="flex justify-between text-xs items-center mb-1">
+                            <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                                <ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本
+                            </span>
+                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
+                            <div className="text-right">
+                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                                <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ** RED TEAM TERMINAL ** */}
             <div>
                  <div className="flex items-center justify-between mb-2 px-1">
                      <div className="flex items-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-widest">
@@ -644,23 +538,32 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                      </div>
                      <RadialProgress score={analysis.modelFusionConfidence} size={28} strokeWidth={3} />
                  </div>
-                 <CriticTerminal logic={analysis.redTeamingLogic} />
+                 <CriticTerminal data={analysis.redTeaming} />
             </div>
 
             {/* Gurus */}
             <div>
-                 <div className="text-[10px] text-gray-600 font-bold uppercase px-1 mb-2 flex items-center gap-2 tracking-widest"><Users className="w-3 h-3" /> 大师观点 (COUNCIL)</div>
+                 <div className="text-[10px] text-gray-600 font-bold uppercase px-1 mb-2 flex items-center gap-2 tracking-widest"><Users className="w-3 h-3" /> 大师议事会 (COUNCIL)</div>
                  <div className="grid grid-cols-2 gap-2">{analysis.guruInsights && analysis.guruInsights.map((guru, idx) => (<div key={idx} className="bg-[#0b1215] border border-gray-800 p-3 rounded-xl flex flex-col gap-2 hover:bg-[#111820] transition-colors group"><div className="flex items-center justify-between"><span className="text-[9px] font-bold text-gray-400 truncate group-hover:text-white transition-colors">{guru.name}</span><span className={`text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wide ${getVerdictStyle(guru.verdict)}`}>{guru.verdict}</span></div><div className="text-[9px] text-gray-500 italic truncate border-l-2 border-gray-800 pl-2 group-hover:border-gray-600 transition-colors">"{guru.quote}"</div></div>))}</div>
             </div>
+            
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col gap-1 hover:border-blue-500/30 transition-colors">
+                    <div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase"><Target className="w-3 h-3" /> 止盈目标 (TP)</div>
+                    <div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.takeProfit)}</div>
+                </div>
+                <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col gap-1 hover:border-red-500/30 transition-colors">
+                    <div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase"><ShieldAlert className="w-3 h-3" /> 止损风控 (SL)</div>
+                    <div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.stopLoss)}</div>
+                </div>
+            </div>
         </div>
+        
         <button onClick={onAnalyze} disabled={loading} className="mt-4 w-full py-3 bg-white hover:bg-gray-200 border border-transparent disabled:opacity-50 text-black text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]"><RefreshCcwIcon className="w-4 h-4" /> 重启深度分析</button>
     </div>
   );
 };
-
-const RadarItem = ({ label, value, icon, color }: any) => (
-    <div className="bg-[#0b1215] rounded-xl p-3 border border-gray-800 flex flex-col gap-1.5 hover:border-gray-700 transition-colors"><div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase">{icon} {label}</div><div className={`text-[10px] font-bold truncate ${color}`}>{value}</div></div>
-);
 
 const RefreshCcwIcon = ({className}: {className?: string}) => (<svg className={className} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74-2.74L3 12" /><path d="M3 3v9h9" /></svg>);
 export default AnalysisCard;
