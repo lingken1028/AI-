@@ -42,6 +42,29 @@ export interface RiskManagement {
     scalingStrategy: string;
 }
 
+export interface TechnicalIndicators {
+    rsi: number; // Relative Strength Index (0-100)
+    macdStatus: 'Golden Cross (金叉)' | 'Death Cross (死叉)' | 'Divergence (背离)' | 'Neutral (中性)';
+    emaAlignment: 'Bullish Stack (多头排列)' | 'Bearish Stack (空头排列)' | 'Tangled (纠缠)';
+    bollingerStatus: 'Squeeze (收口)' | 'Expansion (开口)' | 'Upper Band (触顶)' | 'Lower Band (触底)';
+    kdjStatus?: string; // e.g. "Golden Cross (金叉)", "Overbought (超买)"
+    volumeStatus?: string; // e.g. "Heavy Volume (放量)", "Shrinking (缩量)"
+}
+
+export interface InstitutionalData {
+    netInflow: string; // e.g., "+1.2B" or "-500M"
+    blockTrades: 'High Activity' | 'Moderate' | 'Low';
+    mainForceSentiment: 'Aggressive Buy' | 'Passive Sell' | 'Wait & See';
+}
+
+// NEW: Explicit drivers for the Win Rate score
+export interface ScoreDrivers {
+  technical: number;     // Weight: 40%
+  institutional: number; // Weight: 30%
+  sentiment: number;     // Weight: 20%
+  macro: number;         // Weight: 10%
+}
+
 export interface StrategyItem {
   id: string;
   name: string;
@@ -54,6 +77,7 @@ export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
   winRate: number; 
+  scoreDrivers?: ScoreDrivers; // Breakdown of the win rate
   historicalWinRate: number; 
   entryPrice: number;
   entryStrategy: string; 
@@ -70,6 +94,11 @@ export interface AIAnalysis {
   kLineTrend: string; 
   trendResonance: string; 
   marketRegime?: MarketRegime; 
+  
+  // New Technical Fields
+  technicalIndicators?: TechnicalIndicators;
+  institutionalData?: InstitutionalData;
+  
   confidenceDrivers: string[]; 
   guruInsights: GuruInsight[]; 
   redTeamingLogic: string; 

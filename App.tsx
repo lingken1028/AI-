@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity, Clock, Menu, Search, TrendingUp, TrendingDown, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, Navigation, Target, ShieldAlert, Layers, Lock, Unlock, HelpCircle } from 'lucide-react';
 import StockChart from './components/StockChart';
@@ -517,14 +518,29 @@ const App: React.FC = () => {
                         value={analysis ? `${analysis.historicalWinRate}%` : '---'} 
                         color="text-blue-400" 
                         icon={<Activity className="w-3 h-3"/>}
-                        tooltip="基于过去 5 年类似技术形态（如双底、突破）的统计概率。并非对未来的承诺。"
+                        tooltip={
+                            <div>
+                                <strong className="text-white block mb-1">模式匹配 (Pattern Match)</strong>
+                                检索过去 5 年类似 K 线形态（如双底、突破），计算其在随后走势中的上涨概率。
+                            </div>
+                        }
                    />
                    <StatCard 
                         label="AI 预测胜率 (Prob.)" 
                         value={analysis ? `${analysis.winRate}%` : '---'} 
                         color="text-yellow-400" 
                         icon={<Target className="w-3 h-3"/>}
-                        tooltip="实时综合评判：融合资金流向、红队压力测试及市场情绪的胜算估值。"
+                        tooltip={
+                            <div>
+                                <strong className="text-white block mb-2 border-b border-gray-700 pb-1">权重模型 (Weighting)</strong>
+                                <ul className="text-[10px] space-y-1">
+                                    <li className="flex justify-between w-full gap-4"><span>技术面</span> <span className="text-blue-400">40%</span></li>
+                                    <li className="flex justify-between w-full gap-4"><span>资金面</span> <span className="text-yellow-400">30%</span></li>
+                                    <li className="flex justify-between w-full gap-4"><span>情绪面</span> <span className="text-green-400">20%</span></li>
+                                    <li className="flex justify-between w-full gap-4"><span>宏观面</span> <span className="text-purple-400">10%</span></li>
+                                </ul>
+                            </div>
+                        }
                    />
                 </div>
               </div>
@@ -560,7 +576,8 @@ const App: React.FC = () => {
   );
 };
 
-const StatCard = ({ label, value, color, icon, tooltip }: { label: string, value: string, color: string, icon: React.ReactNode, tooltip?: string }) => (
+// FIX: Allow ReactNode for tooltip content to support structured data (lists/html)
+const StatCard = ({ label, value, color, icon, tooltip }: { label: string, value: string, color: string, icon: React.ReactNode, tooltip?: React.ReactNode }) => (
   <div className="bg-[#151c24] p-5 rounded-xl border border-gray-800 hover:border-gray-700 transition-all hover:shadow-lg group relative cursor-default">
     <div className="text-[10px] uppercase font-bold text-gray-500 mb-2 flex items-center gap-2">
         <span className="p-1 bg-gray-800 rounded group-hover:bg-gray-700 transition-colors">{icon}</span>
@@ -571,7 +588,7 @@ const StatCard = ({ label, value, color, icon, tooltip }: { label: string, value
     
     {/* Tooltip */}
     {tooltip && (
-        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 border border-gray-700 text-[10px] text-gray-300 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 leading-relaxed">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-3 bg-gray-900 border border-gray-700 text-[10px] text-gray-300 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 leading-relaxed">
             {tooltip}
         </div>
     )}

@@ -174,13 +174,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     // Asset Classification
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
-    const isForex = symbol.includes('XAU') || symbol.includes('EUR') || symbol.includes('USDJPY') || symbol.startsWith('FX:') || symbol.startsWith('OANDA:');
     
-    // Prepare Tactical Playbook for the AI
-    const strategyPlaybook = STRATEGIES.map(s => `[${s.name.toUpperCase()}]: ${s.description}\nRules: ${s.promptContent}`).join('\n\n');
+    // Prepare Tactical Playbook for the AI (Translated to ensure Chinese context)
+    const strategyPlaybook = STRATEGIES.map(s => `[${s.name}]: ${s.description}\n规则要点: ${s.promptContent}`).join('\n\n');
 
     // ------------------------------------------------------------------
-    // COUNCIL OF MASTERS: DEFINING THE DEBATE PROTOCOL
+    // COUNCIL OF MASTERS: DEFINING THE DEBATE PROTOCOL (LOCALIZED CHINESE)
     // ------------------------------------------------------------------
     
     let personaPrompt = "";
@@ -189,56 +188,55 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     if (isAShare) {
         // A-Share: Focus on Hot Money (Youzi), Main Force (Zhulij), and Policy
         personaPrompt = `
-          COUNCIL MEMBERS FOR A-SHARE (${symbol}):
-          1. [游资大佬 (Hot Money Hunter)]: Obsessed with "Dragon Tiger List" (龙虎榜), limit-up streaks (连板), and market sentiment. Looking for explosive momentum.
-          2. [主力追踪 (Smart Money Tracker)]: Analyzes "Northbound Capital" (北向资金) and Main Force Net Inflow/Outflow. Ignores noise, follows big money.
-          3. [基本面老手 (Value Investor)]: Checks PE/PB, earnings reports, and sector logic. Skeptical of hype.
-          4. [空头警报 (Risk Control)]: Looks for top divergence, high-level cashing out, or regulatory warnings.
+          针对 A股 (${symbol}) 的【大师议事会】成员:
+          1. [游资大佬]: 关注“龙虎榜”、连板高度、市场合力和妖股反包。语言风格：激进、短线、情绪化。
+          2. [主力追踪]: 紧盯“北向资金”、主力净流入、机构大单。语言风格：客观、数据导向、看重筹码。
+          3. [基本面老手]: 关注市盈率(PE)、财报业绩、行业政策风口。语言风格：稳健、长线、价值投资。
+          4. [风控官]: 寻找顶背离、高位滞涨、监管利空信号。语言风格：悲观、谨慎、风险厌恶。
         `;
         searchInstructions = `
           MANDATORY SEARCH QUERIES (EXECUTE THESE EXACTLY):
-          1. "东方财富 ${symbol} 资金流向 主力净流入 今日"
-          2. "同花顺 ${symbol} 龙虎榜数据"
-          3. "雪球 ${symbol} 讨论区 热门观点"
-          4. "新浪财经 ${symbol} 所属板块 政策利好"
+          1. "东方财富 ${symbol} 资金流向 主力净流入 KDJ指标"
+          2. "同花顺 ${symbol} 龙虎榜数据 均线排列 成交量分析"
+          3. "雪球 ${symbol} 讨论区 热门观点 MACD金叉 量能"
+          4. "新浪财经 ${symbol} 所属板块 政策利好 KDJ"
         `;
     } else if (isCrypto) {
         // Crypto: Focus on On-Chain, Funding Rates, Liquidation
         personaPrompt = `
-          COUNCIL MEMBERS FOR CRYPTO (${symbol}):
-          1. [链上侦探 (On-Chain Analyst)]: Checks Active Addresses, Exchange Netflow, and Whale wallet movements.
-          2. [合约猎手 (Derivatives Trader)]: Analyzes Funding Rates, Open Interest (OI), and Liquidation Maps. Looking for short squeezes.
-          3. [技术信仰者 (Pure Chartist)]: Uses SMC (Smart Money Concepts), FVG, and Order Blocks.
-          4. [宏观叙事 (Macro Narrative)]: Watches BTC dominance, ETF flows, and correlation with Nasdaq/DXY.
+          针对 加密货币 (${symbol}) 的【大师议事会】成员:
+          1. [链上侦探]: 检查活跃地址数、交易所净流入、鲸鱼钱包动向。语言风格：技术流、数据敏感。
+          2. [合约猎手]: 分析资金费率(Funding Rate)、持仓量(OI)、爆仓清算图。寻找轧空机会。
+          3. [图表信徒]: 使用 SMC (聪明钱概念)、FVG、RSI 背离、KDJ 金叉。语言风格：纯技术分析。
+          4. [宏观叙事]: 关注比特币市占率、ETF 资金流向、美联储政策。语言风格：宏观大局。
         `;
         searchInstructions = `
           MANDATORY SEARCH QUERIES:
-          1. "${symbol} funding rate coinglass open interest"
-          2. "${symbol} liquidation heatmap today"
-          3. "${symbol} token unlock schedule or whale alert"
-          4. "Crypto twitter sentiment ${symbol}"
+          1. "${symbol} funding rate coinglass open interest rsi kdj"
+          2. "${symbol} liquidation heatmap today technical analysis volume"
+          3. "${symbol} token unlock schedule or whale alert net inflow"
+          4. "Crypto twitter sentiment ${symbol} market structure kdj"
         `;
     } else {
         // US Stocks: Wall St, Options, Earnings
         personaPrompt = `
-          COUNCIL MEMBERS FOR US STOCK (${symbol}):
-          1. [华尔街内幕 (Institutional Insider)]: Checks 13F filings, Dark Pool prints, and Insider Buying/Selling.
-          2. [期权巨鲸 (Gamma Scalper)]: Analyzes "Unusual Whales", Put/Call Ratio, and Gamma Exposure.
-          3. [量化技术派 (Algo Quant)]: Looks for VWAP reclamation, Key Gamma Levels, and Volatility contraction.
-          4. [宏观对冲 (Global Macro)]: Watches Yields, Fed Speak, and Sector Rotation.
+          针对 美股 (${symbol}) 的【大师议事会】成员:
+          1. [华尔街内幕]: 检查 13F 披露、暗池交易(Dark Pool)、内部人买卖。
+          2. [期权巨鲸]: 分析“异动期权”(Unusual Whales)、Put/Call 比例、Gamma 曝露。
+          3. [量化技术派]: 关注 RSI 水平、VWAP 回归、KDJ 状态、MACD 动能。
+          4. [宏观对冲]: 关注美债收益率、美联储讲话、板块轮动。
         `;
         searchInstructions = `
           MANDATORY SEARCH QUERIES:
-          1. "${symbol} unusual options activity today"
-          2. "${symbol} analyst price target upgrades seekingalpha"
-          3. "${symbol} institutional ownership change recent"
-          4. "${symbol} technical analysis tradingview ideas"
+          1. "${symbol} unusual options activity today RSI KDJ value"
+          2. "${symbol} analyst price target upgrades technical indicators volume"
+          3. "${symbol} institutional ownership change recent net inflow"
+          4. "${symbol} technical analysis tradingview ideas MACD KDJ"
         `;
     }
 
     const systemPrompt = `
       You are TradeGuard Pro, executing the "Council of Masters" protocol.
-      You are NOT a passive reporter. You are the chairperson of a high-stakes trading debate.
       
       OBJECTIVE:
       Synthesize a trading decision by orchestrating a debate between the 4 COUNCIL MEMBERS defined below.
@@ -251,9 +249,9 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       RULES:
       1. NO SIMULATION. Use REAL-TIME data from Google Search. If data is conflicting, acknowledge the conflict.
       2. BE DECISIVE. The "Signal" must reflect the winner of the debate.
-      3. LANGUAGE: All output fields MUST be in Simplified Chinese (简体中文), except for standard technical terms (SMC, RSI, MACD).
-      4. "strategyMatch": MUST be chosen from the TACTICAL PLAYBOOK above. If none fit perfectly, choose the closest or "Generic Trend Follow".
-      5. "guruInsights": Map the 4 Council Members to this array. Each 'quote' must be a sharp, specific insight derived from search results (e.g., "主力今日净流出5亿", "Funding rate negative, squeeze imminent").
+      3. LANGUAGE: **ALL output fields MUST be in Simplified Chinese (简体中文).** This is critical.
+      4. LOGIC: You MUST explicitly calculate the "Score Drivers" to explain the win rate.
+      5. TECHNICALS: You MUST find or estimate KDJ (Stochastics) and Volume status.
       
       Current Market Context:
       - Asset: ${symbol}
@@ -264,31 +262,50 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       {
         "signal": "BUY" | "SELL" | "NEUTRAL",
         "realTimePrice": number,
-        "winRate": number, // 0-100, based on consensus strength
-        "historicalWinRate": number, // Estimated from similar setups
+        "scoreDrivers": {
+            "technical": number, // 0-100 Score. Based on Indicators (RSI, KDJ, MACD).
+            "institutional": number, // 0-100 Score. Based on Net Flow, Options, Whales.
+            "sentiment": number, // 0-100 Score. Based on News, Social Media.
+            "macro": number // 0-100 Score. Based on Sector, Policy, Broad Market.
+        },
+        "winRate": number, // CALCULATED AS: (Technical*0.4 + Institutional*0.3 + Sentiment*0.2 + Macro*0.1). Round to integer.
+        "historicalWinRate": number, 
         "entryPrice": number,
-        "entryStrategy": "string (e.g., 回踩 152.50 确认支撑)",
+        "entryStrategy": "string (Short Chinese name of the setup)",
         "takeProfit": number,
         "stopLoss": number,
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string (Summary of the Council's final decision)",
-        "volatilityAssessment": "string (e.g., ATR High, Expect Turbulence)",
-        "strategyMatch": "string (NAME of the strategy from Playbook)",
-        "marketStructure": "string (e.g., Bullish MSS Confirmed)",
+        "reasoning": "string (Summary of the Council's final decision in Chinese. Explain WHY the score is what it is.)",
+        "volatilityAssessment": "string (e.g., 高波动/低波动)",
+        "strategyMatch": "string",
+        "marketStructure": "string (e.g., 多头趋势/空头趋势/震荡)",
         "marketRegime": {
-            "macroTrend": "string (Risk-On/Off)",
-            "sectorPerformance": "string (Strong/Weak)",
-            "institutionalAction": "string (Accumulation/Distribution)"
+            "macroTrend": "string",
+            "sectorPerformance": "string",
+            "institutionalAction": "string"
         },
-        "redTeamingLogic": "string (STRICT FORMAT: '⚠️ RISKS:\\n- [Risk 1]\\n- [Risk 2]\\n🛡️ MITIGATIONS:\\n- [Mitigation 1]...')",
+        "technicalIndicators": {
+            "rsi": number, 
+            "macdStatus": "string (金叉/死叉/背离/中性)",
+            "emaAlignment": "string (多头排列/空头排列/纠缠)",
+            "bollingerStatus": "string (收口/开口/触顶/触底)",
+            "kdjStatus": "string (e.g. 金叉/死叉/超买/超卖)",
+            "volumeStatus": "string (e.g. 底部放量/缩量回调/天量见顶)"
+        },
+        "institutionalData": {
+            "netInflow": "string (e.g., '+2.5亿' or '-500万')",
+            "blockTrades": "string (高活跃/中等/低迷)",
+            "mainForceSentiment": "string (积极抢筹/被动出货/观望)"
+        },
+        "redTeamingLogic": "string (STRICT FORMAT: '⚠️ 风险揭示:\\n... 🛡️ 应对策略:\\n...')",
         "modelFusionConfidence": number, 
         "guruInsights": [
-             { "name": "Council Member 1 Name", "style": "Role Description", "verdict": "看多/看空", "quote": "Specific data-driven insight" },
-             { "name": "Council Member 2 Name", "style": "Role Description", "verdict": "看多/看空", "quote": "Specific data-driven insight" },
-             { "name": "Council Member 3 Name", "style": "Role Description", "verdict": "看多/看空", "quote": "Specific data-driven insight" },
-             { "name": "Council Member 4 Name", "style": "Role Description", "verdict": "看多/看空", "quote": "Specific data-driven insight" }
+             { "name": "Council Member 1 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" },
+             { "name": "Council Member 2 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" },
+             { "name": "Council Member 3 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" },
+             { "name": "Council Member 4 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" }
         ],
         "futurePrediction": {
              "targetHigh": number,
@@ -304,10 +321,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       
       ${searchInstructions}
       
-      STEP 1: SEARCH. Gather data for each Council Member.
-      STEP 2: DEBATE. Weigh Bullish vs Bearish evidence.
-      STEP 3: MATCH STRATEGY. Compare current price action against the TACTICAL PLAYBOOK.
-      STEP 4: DECIDE. Generate JSON output.
+      Task:
+      1. Search for PRICE ACTION and TECHNICALS (RSI, KDJ, MACD, Volume).
+      2. Search for INSTITUTIONAL FLOW (Net Inflow, Block Trades, Options).
+      3. EVALUATE & SCORE: Calculate 0-100 scores for Technical, Institutional, Sentiment, and Macro.
+      4. DEBATE: Weigh Bullish vs Bearish evidence in CHINESE.
+      5. GENERATE JSON Response with specific 'scoreDrivers'.
       
       Reference Price: ${currentPrice}
       
@@ -330,9 +349,28 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         const data = cleanAndParseJSON(result.text);
 
         // Safety fallbacks
-        data.winRate = data.winRate || 50;
         data.modelFusionConfidence = data.modelFusionConfidence || 70;
         
+        // If scoreDrivers are missing, synthesize them (Fallback for structure safety)
+        if (!data.scoreDrivers) {
+            const baseScore = data.winRate || 50;
+            data.scoreDrivers = {
+                technical: baseScore,
+                institutional: baseScore,
+                sentiment: baseScore,
+                macro: baseScore
+            };
+        }
+        
+        // Recalculate WinRate if drivers exist to ensure consistency
+        if (data.scoreDrivers) {
+            const { technical, institutional, sentiment, macro } = data.scoreDrivers;
+            const weighted = (technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1);
+            data.winRate = Math.round(weighted);
+        } else {
+            data.winRate = data.winRate || 50;
+        }
+
         // Robust number parsing
         data.realTimePrice = parsePrice(data.realTimePrice);
         data.entryPrice = parsePrice(data.entryPrice);
