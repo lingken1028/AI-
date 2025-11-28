@@ -1,8 +1,9 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -210,9 +211,9 @@ const AnalysisLoadingState = () => {
     const steps = [
         { id: 0, text: "正在初始化量子网络链接...", sub: "Initializing Quantum Uplink", icon: Globe, color: "text-blue-400", bg: "bg-blue-500" },
         { id: 1, text: "Gemini 3 Pro: 识别市场结构...", sub: "Scanning Market Structure (MSS)", icon: Bot, color: "text-yellow-400", bg: "bg-yellow-500" },
-        { id: 2, text: "正在计算 RSI/MACD/成交量...", sub: "Calculating Technical Vectors", icon: Activity, color: "text-cyan-400", bg: "bg-cyan-500" },
-        { id: 3, text: "红队协议: 模拟极限压力测试...", sub: "Running Red Team Scenarios", icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500" },
-        { id: 4, text: "正在生成最终决策报告...", sub: "Finalizing Tactical Report", icon: BrainCircuit, color: "text-purple-400", bg: "bg-purple-500" }
+        { id: 2, text: "搜索技术指标 (KDJ, RSI, Vol)...", sub: "Fetching Technical Vectors", icon: Activity, color: "text-cyan-400", bg: "bg-cyan-500" },
+        { id: 3, text: "推演三种市场剧本 (牛/熊/震)...", sub: "Simulating Market Scenarios", icon: GitCommit, color: "text-purple-400", bg: "bg-purple-500" },
+        { id: 4, text: "正在生成最终决策报告...", sub: "Finalizing Tactical Report", icon: BrainCircuit, color: "text-green-400", bg: "bg-green-500" }
     ];
 
     useEffect(() => {
@@ -461,6 +462,63 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                 <RadarItem label="板块 (Sector)" value={analysis.marketRegime.sectorPerformance} icon={<BarChart4 className="w-3 h-3"/>} color={analysis.marketRegime.sectorPerformance.includes('Strong') || analysis.marketRegime.sectorPerformance.includes('强势') ? 'text-green-400' : analysis.marketRegime.sectorPerformance.includes('Divergent') || analysis.marketRegime.sectorPerformance.includes('背离') ? 'text-yellow-400' : 'text-gray-400'} />
                  <RadarItem label="资金 (Flow)" value={analysis.marketRegime.institutionalAction} icon={<Users className="w-3 h-3"/>} color={analysis.marketRegime.institutionalAction.includes('Accumulation') || analysis.marketRegime.institutionalAction.includes('吸筹') ? 'text-green-400' : analysis.marketRegime.institutionalAction.includes('Distribution') || analysis.marketRegime.institutionalAction.includes('派发') ? 'text-red-400' : 'text-gray-400'} />
             </div>
+        )}
+
+        {/* --- SCENARIO ANALYSIS SECTION (NEW) --- */}
+        {analysis.scenarios && (
+          <div className="mb-6 bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-2 opacity-5"><GitCommit className="w-16 h-16 text-purple-500"/></div>
+             <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
+                 <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演 (Scenario Simulation)
+             </h3>
+
+             <div className="space-y-3">
+                {/* Bullish Scenario */}
+                <div className="flex flex-col gap-1.5">
+                   <div className="flex justify-between text-xs items-center">
+                      <span className="font-bold text-green-400 flex items-center gap-1.5"><ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本 (Bullish)</span>
+                      <span className="font-mono text-white">{analysis.scenarios.bullish.probability}%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
+                   </div>
+                   <div className="flex justify-between items-start text-[9px] text-gray-500 mt-0.5">
+                      <span className="text-gray-400">{analysis.scenarios.bullish.description}</span>
+                      <span className="font-mono text-green-300 bg-green-900/20 px-1 rounded border border-green-500/20">Target: {formatCurrency(analysis.scenarios.bullish.targetPrice)}</span>
+                   </div>
+                </div>
+
+                {/* Neutral Scenario */}
+                <div className="flex flex-col gap-1.5">
+                   <div className="flex justify-between text-xs items-center">
+                      <span className="font-bold text-yellow-400 flex items-center gap-1.5"><Minus className="w-3.5 h-3.5"/> 震荡剧本 (Neutral)</span>
+                      <span className="font-mono text-white">{analysis.scenarios.neutral.probability}%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
+                   </div>
+                   <div className="flex justify-between items-start text-[9px] text-gray-500 mt-0.5">
+                      <span className="text-gray-400">{analysis.scenarios.neutral.description}</span>
+                      <span className="font-mono text-yellow-300 bg-yellow-900/20 px-1 rounded border border-yellow-500/20">Target: {formatCurrency(analysis.scenarios.neutral.targetPrice)}</span>
+                   </div>
+                </div>
+
+                {/* Bearish Scenario */}
+                <div className="flex flex-col gap-1.5">
+                   <div className="flex justify-between text-xs items-center">
+                      <span className="font-bold text-red-400 flex items-center gap-1.5"><ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本 (Bearish)</span>
+                      <span className="font-mono text-white">{analysis.scenarios.bearish.probability}%</span>
+                   </div>
+                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-red-500 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
+                   </div>
+                   <div className="flex justify-between items-start text-[9px] text-gray-500 mt-0.5">
+                      <span className="text-gray-400">{analysis.scenarios.bearish.description}</span>
+                      <span className="font-mono text-red-300 bg-red-900/20 px-1 rounded border border-red-500/20">Target: {formatCurrency(analysis.scenarios.bearish.targetPrice)}</span>
+                   </div>
+                </div>
+             </div>
+          </div>
         )}
 
         {/* --- TECHNICAL COCKPIT (UPGRADED) --- */}

@@ -1,4 +1,5 @@
 
+
 export enum Timeframe {
   M1 = '1m',
   M3 = '3m',
@@ -73,6 +74,12 @@ export interface StrategyItem {
   promptContent: string;
 }
 
+export interface MarketScenario {
+    probability: number; // Percentage 0-100
+    targetPrice: number;
+    description: string;
+}
+
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
@@ -98,6 +105,13 @@ export interface AIAnalysis {
   // New Technical Fields
   technicalIndicators?: TechnicalIndicators;
   institutionalData?: InstitutionalData;
+
+  // New Scenario Fields
+  scenarios?: {
+    bullish: MarketScenario;
+    bearish: MarketScenario;
+    neutral: MarketScenario;
+  };
   
   confidenceDrivers: string[]; 
   guruInsights: GuruInsight[]; 

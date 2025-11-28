@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Activity, Clock, Menu, Search, TrendingUp, TrendingDown, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, Navigation, Target, ShieldAlert, Layers, Lock, Unlock, HelpCircle } from 'lucide-react';
+import { Activity, Clock, Menu, Search, TrendingUp, TrendingDown, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, Navigation, Target, ShieldAlert, Layers, Lock, Unlock, HelpCircle, Camera, Image as ImageIcon } from 'lucide-react';
 import StockChart from './components/StockChart';
 import AnalysisCard from './components/AnalysisCard';
 import BacktestModal from './components/BacktestModal';
@@ -42,6 +42,10 @@ const App: React.FC = () => {
   const [tempPriceInput, setTempPriceInput] = useState('');
   const priceInputRef = useRef<HTMLInputElement>(null);
 
+  // Multimodal State
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // 2. PERSISTENCE: Save to localStorage whenever watchlist changes
   useEffect(() => {
     localStorage.setItem('tradeGuard_watchlist', JSON.stringify(watchlist));
@@ -55,6 +59,7 @@ const App: React.FC = () => {
     }
     setIsEditingPrice(false);
     setIsPriceManuallySet(false); // Reset lock on stock switch
+    setSelectedImage(null); // Reset image on stock switch
   }, [selectedSymbol]);
 
   // NEW: Silent Price Auto-Refresh Interval (Optimized to 15s for Live Feel)
@@ -89,6 +94,7 @@ const App: React.FC = () => {
       setCurrentPrice(stock.currentPrice); 
       setIsPriceManuallySet(false); // Reset lock
       setAnalysis(null); // Clear old analysis
+      setSelectedImage(null);
       
       // On Mobile, close sidebar on select. On Desktop, keep it open IF it was open.
       if (window.innerWidth < 1024) {
@@ -113,6 +119,30 @@ const App: React.FC = () => {
       }
   };
 
+  // Image Upload Handler
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result as string;
+        // Remove data:image/png;base64, prefix for API
+        const cleanBase64 = base64String.split(',')[1]; 
+        setSelectedImage(cleanBase64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current?.click();
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Function to fetch data and analysis
   const fetchMarketAnalysis = useCallback(async () => {
     setIsLoading(true);
@@ -124,10 +154,8 @@ const App: React.FC = () => {
       // Step 0: Logic for Price Source
       if (isPriceManuallySet) {
           console.log("Using LOCKED price for analysis:", currentPrice);
-          // If locked, we DO NOT fetch fresh data. We use the locked price.
           analysisAnchorPrice = currentPrice;
       } else {
-          // If NOT locked, try to get the very latest price before analysis
           try {
              const freshData = await lookupStockSymbol(selectedSymbol.symbol);
              if (freshData && freshData.currentPrice > 0) {
@@ -143,11 +171,12 @@ const App: React.FC = () => {
           }
       }
 
-      // Step 1: Analyze using the anchor price
+      // Step 1: Analyze using the anchor price AND image if available
       const result: RealTimeAnalysis = await analyzeMarketData(
           selectedSymbol.symbol, 
           selectedTimeframe, 
-          analysisAnchorPrice
+          analysisAnchorPrice,
+          selectedImage || undefined // Pass image to service
       );
       
       setAnalysis(result);
@@ -165,7 +194,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice, isPriceManuallySet]);
+  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice, isPriceManuallySet, selectedImage]);
 
   useEffect(() => {
     setAnalysis(null);
@@ -475,9 +504,36 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-3">
+                 {/* Vision Upload Button */}
+                 <div className="relative">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      ref={fileInputRef} 
+                      onChange={handleImageUpload} 
+                      className="hidden" 
+                    />
+                    {selectedImage ? (
+                         <div className="flex items-center gap-2 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-xs font-bold rounded-lg border border-purple-500/40 transition-all">
+                             <ImageIcon className="w-4 h-4" />
+                             <span>图片已就绪</span>
+                             <button onClick={(e) => { e.stopPropagation(); clearImage(); }} className="hover:text-white p-0.5 rounded-full hover:bg-purple-600"><X className="w-3 h-3"/></button>
+                         </div>
+                    ) : (
+                        <button 
+                            onClick={triggerFileInput}
+                            className="flex items-center gap-2 px-4 py-2 bg-gray-800/50 hover:bg-gray-700 hover:text-white text-gray-400 text-xs font-bold rounded-lg border border-gray-700 hover:border-gray-600 transition-all"
+                            title="上传K线截图进行多模态分析"
+                        >
+                            <Camera className="w-4 h-4" />
+                            <span className="hidden sm:inline">AI 识图</span>
+                        </button>
+                    )}
+                 </div>
+
                  <button 
                     onClick={() => setIsBacktestOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 text-xs font-bold rounded-lg border border-purple-500/20 transition-all hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 text-xs font-bold rounded-lg border border-blue-500/20 transition-all hover:scale-105 active:scale-95"
                  >
                     <BarChart2 className="w-4 h-4" />
                     <span>策略历史回测</span>
