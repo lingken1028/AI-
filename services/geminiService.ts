@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 import { STRATEGIES } from "../constants";
@@ -175,85 +174,74 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
     
-    // Prepare Tactical Playbook for the AI (Translated to ensure Chinese context)
-    const strategyPlaybook = STRATEGIES.map(s => `[${s.name}]: ${s.description}\n规则要点: ${s.promptContent}`).join('\n\n');
-
-    // ------------------------------------------------------------------
-    // COUNCIL OF MASTERS: DEFINING THE DEBATE PROTOCOL (LOCALIZED CHINESE)
-    // ------------------------------------------------------------------
-    
-    let personaPrompt = "";
-    let searchInstructions = "";
-
+    // DYNAMIC TIMEFRAME CONTEXT FOR SEARCH
     const tfContext = timeframe === Timeframe.D1 ? "日线" : `${timeframe}级别`; 
     const tfSearch = timeframe === Timeframe.D1 ? "daily chart" : `${timeframe} chart`;
 
+    let searchInstructions = "";
     if (isAShare) {
-        personaPrompt = `
-          针对 A股 (${symbol}) 的【大师议事会】成员:
-          1. [游资大佬]: 关注“龙虎榜”、连板高度、市场合力。
-          2. [风控官 (红队)]: 寻找监管利空、高位滞涨信号。
-          3. [策略架构师]: 定义具体的买入条件和止损规则。
-        `;
         searchInstructions = `
-          MANDATORY SEARCH QUERIES (BLIND/HYBRID MODE):
+          MANDATORY SEARCH (BLIND/HYBRID):
           1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入"
           2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext}"
-          3. "新浪财经 ${symbol} ${tfContext} 技术面分析"
+          3. "雪球 ${symbol} 讨论区 热门观点 成交量分析"
         `;
     } else if (isCrypto) {
-        personaPrompt = `
-          针对 加密货币 (${symbol}) 的【大师议事会】成员:
-          1. [合约猎手]: 分析资金费率(Funding Rate)、持仓量(OI)。
-          2. [红队黑客]: 寻找链上清算聚集点、负面宏观消息。
-          3. [策略架构师]: 定义精确的入场触发器（如突破FVG）。
-        `;
         searchInstructions = `
-          MANDATORY SEARCH QUERIES (BLIND/HYBRID MODE):
+          MANDATORY SEARCH (BLIND/HYBRID):
           1. "${symbol} funding rate open interest ${tfSearch} current"
           2. "${symbol} RSI KDJ indicator values ${tfSearch} today"
           3. "${symbol} liquidation levels heatmap"
         `;
     } else {
-        personaPrompt = `
-          针对 美股 (${symbol}) 的【大师议事会】成员:
-          1. [华尔街内幕]: 检查 13F、暗池交易。
-          2. [红队审计]: 寻找财报雷区、宏观加息风险。
-          3. [策略架构师]: 定义趋势跟踪或反转的确认信号。
-        `;
         searchInstructions = `
-          MANDATORY SEARCH QUERIES (BLIND/HYBRID MODE):
+          MANDATORY SEARCH (BLIND/HYBRID):
           1. "${symbol} unusual options activity today RSI value ${tfSearch}"
-          2. "${symbol} MACD histogram status KDJ ${tfSearch}"
-          3. "${symbol} institutional net inflow current data"
+          2. "${symbol} institutional net inflow current data"
+          3. "${symbol} support resistance levels ${tfSearch} analysis"
         `;
     }
 
+    // UNIFIED SYSTEM PROMPT: THE CHAIN OF DEDUCTION
     const systemPrompt = `
-      You are TradeGuard Pro, executing the "Council of Masters" protocol.
+      You are **TradeGuard Pro**, an elite institutional trading AI.
       
-      OBJECTIVE: Synthesize a professional trading decision with STRICT LOGIC and ADVERSARIAL TESTING.
+      **CORE OBJECTIVE**: Generate a coherent, mathematically deducted trading plan. All components must form a logical chain, not random outputs.
       
-      DATA SOURCE PROTOCOL:
-      - IMAGE PROVIDED: ${!!imageBase64}
-      - **TIMEFRAME ALIGNMENT**: The user is looking at the **${timeframe}** chart.
-      - **HYBRID MODE**: Even if an image is provided, YOU MUST EXECUTE GOOGLE SEARCHES to find the exact numeric values of indicators.
+      **THE LOGIC CHAIN (执行链条)**:
+      1.  **DATA INTAKE**: 
+          - IF Image: Identify visual structure (MSS, FVG, Patterns) on the ${timeframe} chart.
+          - IF Search: Extract exact numeric values (RSI, Vol, Net Inflow).
       
-      ${personaPrompt}
-
-      RULES:
-      1. **SCENARIO DEDUCTION**: Mathematically deduce 3 scenarios (Bull/Bear/Neutral).
-      2. **RED TEAMING (CRITIC)**: You must act as a hostile critic. Find flaws. 
-         - **Stress Test**: What if Bitcoin drops 5%? What if earnings miss?
-         - **Severity**: Assign a risk level.
-      3. **TRADING BLUEPRINT (ARCHITECT)**: Do not just give a signal. Define the RULES.
-         - **Triggers**: Specific conditions (e.g. "Close > EMA20").
-         - **Invalidation**: Precise stop condition (e.g. "Close < Support").
-      4. LANGUAGE: **Simplified Chinese (简体中文)**.
+      2.  **DRIVER CALCULATION (归因计算)**:
+          - Calculate 4 sub-scores (0-100): Technical, Institutional, Sentiment, Macro.
+          - **Win Rate** = (Tech*0.4 + Inst*0.3 + Sent*0.2 + Macro*0.1).
+          - *Constraint*: If Institutional score is low (<40), Win Rate cannot exceed 65%.
       
-      Current Market Context:
-      - Asset: ${symbol}
-      - Price Anchor: ${currentPrice}
+      3.  **SCENARIO DEDUCTION (情景推演)**:
+          - Based *strictly* on the calculated Win Rate:
+          - If Win Rate > 60%: Bullish Scenario is dominant (Prob > 50%).
+          - If Win Rate < 40%: Bearish Scenario is dominant.
+          - If Win Rate 40-60%: Neutral Scenario is dominant.
+          - Generate precise targets for all 3 scenarios.
+      
+      4.  **ARCHITECT BLUEPRINT (交易蓝图)**:
+          - Create a specific Trade Setup for the **Dominant Scenario** found in Step 3.
+          - Identity: Name the setup (e.g., "Bull Flag Breakout").
+          - Triggers: List 3 exact conditions for entry.
+          - Invalidation: exact price level where this specific setup fails.
+      
+      5.  **RED TEAM ATTACK (红队风控)**:
+          - Attack the **Architect Blueprint** from Step 4.
+          - "Stress Test": What happens to this setup if a sudden shock occurs?
+          - Risks: What specific weakness exists in the Blueprint?
+      
+      **LANGUAGE RULE (CRITICAL)**: 
+      - The fields 'tradingSetup', 'redTeaming', 'scenarios.description', 'reasoning', and 'marketStructure' MUST be in **SIMPLIFIED CHINESE (简体中文)**.
+      - Keep English only for technical terms like "RSI", "MACD", "FVG".
+      
+      Current Context:
+      - Asset: ${symbol} (${currentPrice})
       - Timeframe: ${timeframe}
       
       Output JSON Schema:
@@ -261,46 +249,46 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "signal": "BUY" | "SELL" | "NEUTRAL",
         "realTimePrice": number,
         "scoreDrivers": {
-            "technical": number, "institutional": number, "sentiment": number, "macro": number
+            "technical": number, "institutional": number, "sentiment": number, "macro": number 
         },
         "winRate": number, 
         "historicalWinRate": number, 
         "entryPrice": number,
-        "entryStrategy": "string (Short Name)",
+        "entryStrategy": "string (Short Name in Chinese)",
         "takeProfit": number,
         "stopLoss": number,
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string (Executive Summary)",
-        "volatilityAssessment": "string",
-        "strategyMatch": "string",
-        "marketStructure": "string",
+        "reasoning": "string (Summary of the Logic Chain in Chinese)",
+        "volatilityAssessment": "string (Chinese)",
+        "strategyMatch": "string (e.g. '趋势跟随')",
+        "marketStructure": "string (e.g. '多头排列 (Bullish)')",
         "technicalIndicators": {
-            "rsi": number, "macdStatus": "string", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
+            "rsi": number, "macdStatus": "string (Chinese)", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
         },
         "institutionalData": {
             "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string"
         },
         "scenarios": {
-            "bullish": { "probability": number, "targetPrice": number, "description": "string" },
-            "bearish": { "probability": number, "targetPrice": number, "description": "string" },
-            "neutral": { "probability": number, "targetPrice": number, "description": "string" }
-        },
-        "redTeaming": {
-            "risks": ["string", "string"],
-            "mitigations": ["string"],
-            "stressTest": "string (e.g., '如果大盘暴跌 3%...')",
-            "severity": "CRITICAL" | "HIGH" | "MODERATE" | "LOW"
+            "bullish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
+            "bearish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
+            "neutral": { "probability": number, "targetPrice": number, "description": "string (Chinese)" }
         },
         "tradingSetup": {
-            "setupName": "string (e.g., 'Wyckoff Spring')",
-            "confirmationTriggers": ["string (e.g., 'Volume > 2x')", "string"],
-            "invalidationCriteria": "string (Strict rule to cancel trade)"
+            "strategyIdentity": "string (e.g. '威科夫弹簧效应')",
+            "confirmationTriggers": ["Condition 1 (Chinese)", "Condition 2", "Condition 3"],
+            "invalidationPoint": "string (Specific Condition in Chinese)"
+        },
+        "redTeaming": {
+            "risks": ["Risk 1 (Chinese)", "Risk 2"],
+            "mitigations": ["Action 1 (Chinese)"],
+            "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            "stressTest": "string (Scenario description in Chinese)"
         },
         "modelFusionConfidence": number, 
         "guruInsights": [
-             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight" }
+             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Chinese Quote" }
         ],
         "futurePrediction": {
              "targetHigh": number, "targetLow": number, "confidence": number, "predictionPeriod": "${horizon}"
@@ -309,18 +297,18 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     `;
 
     const userPromptText = `
-      Execute Council of Masters Protocol for ${symbol} on ${timeframe}.
+      Execute Logic Chain for ${symbol} on ${timeframe}.
       ${searchInstructions}
       
-      Task:
-      ${imageBase64 ? `0. HYBRID ANALYSIS: The attached image is the **${timeframe}** Chart. Cross-reference visible patterns with search data.` : '0. BLIND ANALYSIS: Rely on search data.'}
-      1. **CALCULATE** Score Drivers (Tech/Inst/Sent/Macro).
-      2. **DEDUCE** Scenarios.
-      3. **RED TEAM** the thesis (Find risks).
-      4. **DEFINE** the Trading Blueprint (Triggers/Invalidation).
+      ${imageBase64 ? `IMAGE MODE: Analyze the attached ${timeframe} chart visually.` : 'BLIND MODE: Rely on Search Data.'}
+      
+      REQUIREMENTS:
+      1. Ensure Scenarios (Bull/Bear/Neutral) probability sums to 100%.
+      2. Ensure Trading Setup matches the highest probability scenario.
+      3. Ensure Red Team specifically critiques that Setup.
+      4. RETURN JSON ONLY.
       
       Reference Price: ${currentPrice}
-      RETURN JSON ONLY.
     `;
 
     const requestContents: any = {
@@ -351,23 +339,30 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
         const data = cleanAndParseJSON(result.text);
 
-        // Fallbacks
-        data.modelFusionConfidence = data.modelFusionConfidence || 70;
-        
+        // Safety Data Validation & Repair
+        const baseScore = data.winRate || 50;
         if (!data.scoreDrivers) {
-            const baseScore = data.winRate || 50;
             data.scoreDrivers = { technical: baseScore, institutional: baseScore, sentiment: baseScore, macro: baseScore };
         }
         
-        if (data.scoreDrivers) {
-            const { technical, institutional, sentiment, macro } = data.scoreDrivers;
-            const weighted = (technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1);
-            data.winRate = Math.round(weighted);
+        // Ensure consistency between Drivers and WinRate
+        const { technical, institutional, sentiment, macro } = data.scoreDrivers;
+        const calculatedWinRate = Math.round((technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1));
+        data.winRate = calculatedWinRate; // Enforce calculation
+
+        // Ensure Structure consistency (Fallback for old cache or hallucinations)
+        if (!data.tradingSetup) {
+             data.tradingSetup = {
+                 strategyIdentity: "标准趋势结构",
+                 confirmationTriggers: ["价格突破均线", "成交量配合", "MACD金叉"],
+                 invalidationPoint: "收盘跌破支撑位"
+             };
         }
 
-        // Parse Numbers
-        const numFields = ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'];
-        numFields.forEach(f => data[f] = parsePrice(data[f]));
+        // Parsing numbers
+        ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'].forEach(key => {
+            data[key] = parsePrice(data[key]);
+        });
         
         if (data.futurePrediction) {
             data.futurePrediction.targetHigh = parsePrice(data.futurePrediction.targetHigh);
@@ -380,21 +375,8 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.scenarios.neutral.targetPrice = parsePrice(data.scenarios.neutral.targetPrice);
         }
 
-        // Structural Fallbacks
-        if (!data.redTeaming) {
-            data.redTeaming = {
-                risks: ["General Market Volatility"],
-                mitigations: ["Use Stop Loss"],
-                stressTest: "Market Crash Scenario",
-                severity: "MODERATE"
-            };
-        }
-        if (!data.tradingSetup) {
-             data.tradingSetup = {
-                setupName: "Standard Trend Follow",
-                confirmationTriggers: ["Price > EMA"],
-                invalidationCriteria: "Price < Support"
-             };
+        if (!['BUY', 'SELL', 'NEUTRAL'].includes(data.signal)) {
+            data.signal = SignalType.NEUTRAL;
         }
 
         return data as RealTimeAnalysis;

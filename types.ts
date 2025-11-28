@@ -84,15 +84,15 @@ export interface MarketScenario {
 export interface RedTeaming {
     risks: string[];
     mitigations: string[];
-    stressTest: string; // Scenario: "What happens if BTC drops 5%?"
-    severity: 'CRITICAL' | 'HIGH' | 'MODERATE' | 'LOW';
+    severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+    stressTest: string; // A specific "what-if" scenario
 }
 
-// NEW: Structured Trading Rules
+// NEW: Structured Trading Logic/Rules
 export interface TradingSetup {
-    setupName: string; // e.g. "Wyckoff Spring"
-    confirmationTriggers: string[]; // Specific conditions to wait for
-    invalidationCriteria: string; // Strict rule to cancel trade
+    strategyIdentity: string; // e.g. "Bull Flag Breakout"
+    confirmationTriggers: string[]; // List of conditions met
+    invalidationPoint: string; // Strict stop condition logic
 }
 
 export interface AIAnalysis {
@@ -121,19 +121,20 @@ export interface AIAnalysis {
   technicalIndicators?: TechnicalIndicators;
   institutionalData?: InstitutionalData;
 
-  // Scenario Fields
+  // New Scenario Fields
   scenarios?: {
     bullish: MarketScenario;
     bearish: MarketScenario;
     neutral: MarketScenario;
   };
-  
-  // Structured Deep Analysis
-  redTeaming: RedTeaming; 
-  tradingSetup: TradingSetup;
+
+  // Structured Logic & Risks
+  tradingSetup?: TradingSetup;
+  redTeaming?: RedTeaming;
   
   confidenceDrivers: string[]; 
   guruInsights: GuruInsight[]; 
+  // redTeamingLogic: string; // DEPRECATED in favor of redTeaming object
   modelFusionConfidence: number; 
   futurePrediction?: FuturePrediction; 
   riskManagement?: RiskManagement;
@@ -147,7 +148,7 @@ export interface StockSymbol {
   currentPrice: number;
 }
 
-// Backtesting Types
+// Backtesting Types - OPTIMIZED STRATEGIES
 export enum BacktestStrategy {
   ICT_SILVER_BULLET = "ICT Silver Bullet (聪明钱时间窗)",
   VWAP_MEAN_REVERSION = "VWAP Institutional Reversion (机构均值回归)",
