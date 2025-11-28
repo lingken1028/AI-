@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 import { STRATEGIES } from "../constants";
@@ -186,37 +184,42 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     let personaPrompt = "";
     let searchInstructions = "";
 
+    // DYNAMIC TIMEFRAME CONTEXT FOR SEARCH
+    // This ensures "Blind Mode" searches for the CORRECT timeframe data
+    const tfContext = timeframe === Timeframe.D1 ? "日线" : `${timeframe}级别`; 
+    const tfSearch = timeframe === Timeframe.D1 ? "daily chart" : `${timeframe} chart`;
+
     if (isAShare) {
         // A-Share: Focus on Hot Money (Youzi), Main Force (Zhulij), and Policy
         personaPrompt = `
           针对 A股 (${symbol}) 的【大师议事会】成员:
-          1. [游资大佬]: 关注“龙虎榜”、连板高度、市场合力和妖股反包。语言风格：激进、短线、情绪化。
-          2. [主力追踪]: 紧盯“北向资金”、主力净流入、机构大单。语言风格：客观、数据导向、看重筹码。
-          3. [基本面老手]: 关注市盈率(PE)、财报业绩、行业政策风口。语言风格：稳健、长线、价值投资。
-          4. [风控官]: 寻找顶背离、高位滞涨、监管利空信号。语言风格：悲观、谨慎、风险厌恶。
+          1. [游资大佬]: 关注“龙虎榜”、连板高度、市场合力和妖股反包。
+          2. [主力追踪]: 紧盯“北向资金”、主力净流入、机构大单。
+          3. [基本面老手]: 关注市盈率(PE)、财报业绩、行业政策风口。
+          4. [风控官]: 寻找顶背离、高位滞涨、监管利空信号。
         `;
         searchInstructions = `
-          MANDATORY SEARCH QUERIES (BLIND MODE ACTIVATED - SEARCH SPECIFIC VALUES):
-          1. "东方财富 ${symbol} 资金流向 主力净流入 最新数据"
-          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉判断"
+          MANDATORY SEARCH QUERIES (BLIND/HYBRID MODE):
+          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入"
+          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext}"
           3. "雪球 ${symbol} 讨论区 热门观点 成交量分析"
-          4. "新浪财经 ${symbol} 所属板块 政策利好 KDJ"
+          4. "新浪财经 ${symbol} ${tfContext} 技术面分析"
         `;
     } else if (isCrypto) {
         // Crypto: Focus on On-Chain, Funding Rates, Liquidation
         personaPrompt = `
           针对 加密货币 (${symbol}) 的【大师议事会】成员:
-          1. [链上侦探]: 检查活跃地址数、交易所净流入、鲸鱼钱包动向。语言风格：技术流、数据敏感。
-          2. [合约猎手]: 分析资金费率(Funding Rate)、持仓量(OI)、爆仓清算图。寻找轧空机会。
-          3. [图表信徒]: 使用 SMC (聪明钱概念)、FVG、RSI 背离、KDJ 金叉。语言风格：纯技术分析。
-          4. [宏观叙事]: 关注比特币市占率、ETF 资金流向、美联储政策。语言风格：宏观大局。
+          1. [链上侦探]: 检查活跃地址数、交易所净流入、鲸鱼钱包动向。
+          2. [合约猎手]: 分析资金费率(Funding Rate)、持仓量(OI)、爆仓清算图。
+          3. [图表信徒]: 使用 SMC (聪明钱概念)、FVG、RSI 背离、KDJ 金叉。
+          4. [宏观叙事]: 关注比特币市占率、ETF 资金流向、美联储政策。
         `;
         searchInstructions = `
-          MANDATORY SEARCH QUERIES (BLIND MODE ACTIVATED - SEARCH SPECIFIC VALUES):
-          1. "${symbol} funding rate coinglass open interest current value"
-          2. "${symbol} RSI 14 value KDJ indicator status today"
-          3. "${symbol} liquidation levels heatmap analysis"
-          4. "Crypto twitter sentiment ${symbol} market structure technical analysis"
+          MANDATORY SEARCH QUERIES (BLIND/HYBRID MODE):
+          1. "${symbol} funding rate open interest ${tfSearch} current"
+          2. "${symbol} RSI KDJ indicator values ${tfSearch} today"
+          3. "${symbol} liquidation levels heatmap"
+          4. "Crypto twitter sentiment ${symbol} ${tfSearch} analysis"
         `;
     } else {
         // US Stocks: Wall St, Options, Earnings
@@ -228,11 +231,11 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           4. [宏观对冲]: 关注美债收益率、美联储讲话、板块轮动。
         `;
         searchInstructions = `
-          MANDATORY SEARCH QUERIES (BLIND MODE ACTIVATED - SEARCH SPECIFIC VALUES):
-          1. "${symbol} unusual options activity today RSI value"
-          2. "${symbol} MACD histogram status KDJ indicator"
+          MANDATORY SEARCH QUERIES (BLIND/HYBRID MODE):
+          1. "${symbol} unusual options activity today RSI value ${tfSearch}"
+          2. "${symbol} MACD histogram status KDJ ${tfSearch}"
           3. "${symbol} institutional net inflow current data"
-          4. "${symbol} support resistance levels tradingview analysis"
+          4. "${symbol} support resistance levels ${tfSearch} analysis"
         `;
     }
 
@@ -240,25 +243,34 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       You are TradeGuard Pro, executing the "Council of Masters" protocol.
       
       OBJECTIVE:
-      Synthesize a trading decision by orchestrating a debate between the 4 COUNCIL MEMBERS defined below.
-      ${imageBase64 ? 'NOTE: The user has provided a chart screenshot. You MUST Analyze the visual patterns in the image (Trendlines, Candlestick patterns, Indicators) and prioritize visual evidence.' : 'NOTE: No image provided. You MUST rely HEAVILY on Google Search to find specific technical indicator values (RSI, MACD, KDJ). Do not generalize.'}
+      Synthesize a professional trading decision.
+      
+      DATA SOURCE PROTOCOL:
+      - IMAGE PROVIDED: ${!!imageBase64}
+      - **TIMEFRAME ALIGNMENT**: The user is looking at the **${timeframe}** chart.
+      - **HYBRID MODE**: Even if an image is provided, YOU MUST EXECUTE GOOGLE SEARCHES to find the exact numeric values of indicators (RSI, KDJ, MA) for the ${timeframe} timeframe. Do not rely solely on vision. Use the image to identify patterns (FVG, MSS, Triangles) and the Search for data confirmation.
+      - **BLIND MODE**: If no image, rely 100% on the search results for technicals.
       
       ${personaPrompt}
 
-      TACTICAL PLAYBOOK (AVAILABLE STRATEGIES):
+      TACTICAL PLAYBOOK:
       ${strategyPlaybook}
       
       RULES:
-      1. NO SIMULATION. Use REAL-TIME data from Google Search ${imageBase64 ? 'AND VISUAL DATA from the image' : ''}.
-      2. BE DECISIVE. The "Signal" must reflect the winner of the debate.
-      3. LANGUAGE: **ALL output fields MUST be in Simplified Chinese (简体中文).**
-      4. LOGIC: You MUST explicitly calculate the "Score Drivers" (Technical, Institutional, Sentiment, Macro) to explain the Win Rate.
-      5. TECHNICALS: You MUST find or estimate KDJ (Stochastics) and Volume status via search if not visible.
-      6. SCENARIOS: You MUST generate 3 distinct scenarios (Bull/Bear/Neutral) with probabilities summing to ~100%.
+      1. REAL-TIME DATA: Use Google Search to find the latest numeric values.
+      2. **SCENARIO DEDUCTION (NOT SIMULATION)**: You must MATHEMATICALLY DEDUCE 3 scenarios (Bull/Bear/Neutral) based on the "Score Drivers".
+         - Example: If Technical Score is 80 and Sentiment is 70 -> Bullish Prob > 60%.
+         - Do not output random "simulations".
+      3. **WIN RATE TRANSPARENCY**: You must explicitly calculate the "Score Drivers" (Technical, Institutional, Sentiment, Macro). 
+         - Technical: Based on KDJ/RSI/Structure.
+         - Institutional: Based on Net Inflow/Options.
+         - Sentiment: Based on News/Social.
+         - Macro: Based on Sector/Policy.
+      4. LANGUAGE: **ALL output fields MUST be in Simplified Chinese (简体中文).**
       
       Current Market Context:
       - Asset: ${symbol}
-      - Price Anchor: ${currentPrice} (Use this for technical level calculation)
+      - Price Anchor: ${currentPrice}
       - Timeframe: ${timeframe}
       
       Output JSON Schema:
@@ -266,22 +278,22 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "signal": "BUY" | "SELL" | "NEUTRAL",
         "realTimePrice": number,
         "scoreDrivers": {
-            "technical": number, // 0-100. Based on Indicators (RSI, KDJ, MACD).
-            "institutional": number, // 0-100. Based on Net Flow, Options, Whales.
-            "sentiment": number, // 0-100. Based on News, Social Media.
-            "macro": number // 0-100. Based on Sector, Policy, Broad Market.
+            "technical": number, // 0-100
+            "institutional": number, // 0-100
+            "sentiment": number, // 0-100
+            "macro": number // 0-100
         },
-        "winRate": number, // CALCULATED AS: (Technical*0.4 + Institutional*0.3 + Sentiment*0.2 + Macro*0.1). Round to integer.
+        "winRate": number, // FORMULA: (Technical*0.4 + Institutional*0.3 + Sentiment*0.2 + Macro*0.1)
         "historicalWinRate": number, 
         "entryPrice": number,
-        "entryStrategy": "string (Short Chinese name of the setup)",
+        "entryStrategy": "string (Short Chinese name)",
         "takeProfit": number,
         "stopLoss": number,
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string (Summary of the Council's final decision in Chinese. Explain WHY the score is what it is.)",
-        "volatilityAssessment": "string (e.g., 高波动/低波动)",
+        "reasoning": "string (Summary of decision)",
+        "volatilityAssessment": "string",
         "strategyMatch": "string",
         "marketStructure": "string (e.g., 多头趋势/空头趋势/震荡)",
         "marketRegime": {
@@ -291,29 +303,29 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         },
         "technicalIndicators": {
             "rsi": number, 
-            "macdStatus": "string (金叉/死叉/背离/中性)",
-            "emaAlignment": "string (多头排列/空头排列/纠缠)",
-            "bollingerStatus": "string (收口/开口/触顶/触底)",
-            "kdjStatus": "string (e.g. 金叉/死叉/超买/超卖)",
-            "volumeStatus": "string (e.g. 底部放量/缩量回调/天量见顶)"
+            "macdStatus": "string",
+            "emaAlignment": "string",
+            "bollingerStatus": "string",
+            "kdjStatus": "string",
+            "volumeStatus": "string"
         },
         "institutionalData": {
-            "netInflow": "string (e.g., '+2.5亿' or '-500万')",
-            "blockTrades": "string (高活跃/中等/低迷)",
-            "mainForceSentiment": "string (积极抢筹/被动出货/观望)"
+            "netInflow": "string",
+            "blockTrades": "string",
+            "mainForceSentiment": "string"
         },
         "scenarios": {
-            "bullish": { "probability": number, "targetPrice": number, "description": "string (e.g. 突破阻力位看高一线)" },
-            "bearish": { "probability": number, "targetPrice": number, "description": "string (e.g. 跌破支撑引发止损)" },
-            "neutral": { "probability": number, "targetPrice": number, "description": "string (e.g. 区间震荡洗盘)" }
+            "bullish": { "probability": number, "targetPrice": number, "description": "string (Conditional Logic: If price breaks X...)" },
+            "bearish": { "probability": number, "targetPrice": number, "description": "string (Conditional Logic: If price loses Y...)" },
+            "neutral": { "probability": number, "targetPrice": number, "description": "string (Range bound logic)" }
         },
         "redTeamingLogic": "string (STRICT FORMAT: '⚠️ 风险揭示:\\n... 🛡️ 应对策略:\\n...')",
         "modelFusionConfidence": number, 
         "guruInsights": [
-             { "name": "Council Member 1 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" },
-             { "name": "Council Member 2 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" },
-             { "name": "Council Member 3 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" },
-             { "name": "Council Member 4 Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight in Chinese" }
+             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight" },
+             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight" },
+             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight" },
+             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Insight" }
         ],
         "futurePrediction": {
              "targetHigh": number,
@@ -325,36 +337,32 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     `;
 
     const userPromptText = `
-      Execute Council of Masters Protocol for ${symbol}.
+      Execute Council of Masters Protocol for ${symbol} on ${timeframe} Timeframe.
       
       ${searchInstructions}
       
       Task:
-      ${imageBase64 ? '0. ANALYZE IMAGE: Identify Chart Patterns (Head & Shoulders, Flags), Support/Resistance lines drawn by user, and Candlestick sentiment.' : '0. SEARCH MODE: You have NO image. Search specifically for "RSI value", "KDJ value", "MACD status", "Volume analysis" for this asset to fill the technical indicators accurately.'}
-      1. Search for PRICE ACTION and TECHNICALS.
-      2. Search for INSTITUTIONAL FLOW (Net Inflow, Block Trades, Options).
-      3. EVALUATE & SCORE: Calculate specific 0-100 scores for Technical, Institutional, Sentiment, and Macro based on gathered evidence.
-      4. SCENARIO PLANNING: Develop Bull/Bear/Neutral scenarios with concrete probabilities.
-      5. DEBATE: Weigh Bullish vs Bearish evidence in CHINESE.
-      6. GENERATE JSON Response.
+      ${imageBase64 ? `0. HYBRID ANALYSIS: The attached image is the **${timeframe}** Chart. Identify visible patterns (Candles, Structure) consistent with this timeframe. CROSS-REFERENCE with search data.` : '0. BLIND ANALYSIS: Use the provided search queries to find numeric data.'}
+      1. Search for PRICE ACTION and TECHNICALS (RSI, KDJ, MACD) for ${timeframe}.
+      2. Search for INSTITUTIONAL FLOW.
+      3. **CALCULATE** Score Drivers (Tech/Inst/Sent/Macro).
+      4. **DEDUCE** Scenarios (Bull/Bear/Neutral) based on scores.
+      5. Weigh evidence in CHINESE.
       
       Reference Price: ${currentPrice}
       
-      RETURN JSON ONLY. NO MARKDOWN.
+      RETURN JSON ONLY.
     `;
 
     const requestContents: any = {
-      model: imageBase64 ? 'gemini-3-pro-image-preview' : 'gemini-3-pro-preview', // Switch model if image present
+      model: imageBase64 ? 'gemini-3-pro-image-preview' : 'gemini-3-pro-preview', 
       config: {
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
-          // DO NOT SET responseMimeType if using Google Search AND Image, it can sometimes conflict in preview models. 
-          // But 3-pro-preview generally handles it. Let's keep it safe.
           responseMimeType: "application/json" 
       }
     };
 
-    // Construct Parts
     const parts: any[] = [{ text: userPromptText }];
     if (imageBase64) {
       parts.push({
@@ -377,7 +385,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         // Safety fallbacks
         data.modelFusionConfidence = data.modelFusionConfidence || 70;
         
-        // If scoreDrivers are missing, synthesize them (Fallback for structure safety)
         if (!data.scoreDrivers) {
             const baseScore = data.winRate || 50;
             data.scoreDrivers = {
@@ -388,7 +395,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             };
         }
         
-        // Recalculate WinRate if drivers exist to ensure consistency
+        // Recalculate WinRate for consistency
         if (data.scoreDrivers) {
             const { technical, institutional, sentiment, macro } = data.scoreDrivers;
             const weighted = (technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1);
@@ -397,7 +404,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.winRate = data.winRate || 50;
         }
 
-        // Robust number parsing
         data.realTimePrice = parsePrice(data.realTimePrice);
         data.entryPrice = parsePrice(data.entryPrice);
         data.takeProfit = parsePrice(data.takeProfit);
@@ -410,14 +416,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.futurePrediction.targetLow = parsePrice(data.futurePrediction.targetLow);
         }
         
-        // Ensure scenarios exist
         if (data.scenarios) {
             data.scenarios.bullish.targetPrice = parsePrice(data.scenarios.bullish.targetPrice);
             data.scenarios.bearish.targetPrice = parsePrice(data.scenarios.bearish.targetPrice);
             data.scenarios.neutral.targetPrice = parsePrice(data.scenarios.neutral.targetPrice);
         }
 
-        // Validate Signal
         if (!['BUY', 'SELL', 'NEUTRAL'].includes(data.signal)) {
             data.signal = SignalType.NEUTRAL;
         }

@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType } from '../types';
 import { formatCurrency } from '../constants';
@@ -83,27 +81,27 @@ const getVerdictStyle = (verdict: string) => {
 };
 
 // Driver Item Component
-const ScoreDriverItem = ({ label, weight, score, color }: { label: string, weight: number, score: number, color: string }) => {
-    // Determine contribution value
+const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string, weight: number, score: number, color: string, icon: React.ReactNode }) => {
     const contribution = (score * (weight / 100)).toFixed(1);
 
     return (
-        <div className="flex flex-col gap-1.5 bg-[#1a232e] p-2 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors">
-            <div className="flex justify-between items-center text-[9px] uppercase font-bold text-gray-500">
-                <span>{label} <span className="opacity-50 text-[8px]">w.{weight}%</span></span>
-                <span className={color}>{score}分</span>
+        <div className="flex flex-col gap-1.5 bg-[#1a232e] p-2.5 rounded-lg border border-gray-800 hover:border-gray-700 transition-colors shadow-sm">
+            <div className="flex justify-between items-center text-[10px] uppercase font-bold text-gray-500">
+                <span className="flex items-center gap-1.5">{icon} {label}</span>
+                <span className="opacity-50 text-[9px] font-mono">{weight}% Wgt.</span>
+            </div>
+            
+            <div className="flex items-end justify-between mt-1">
+                 <span className={`text-xl font-bold font-mono leading-none ${color}`}>{score}</span>
+                 <span className="text-[9px] text-gray-600 font-mono mb-0.5">+{contribution}%</span>
             </div>
             
             {/* Progress Bar */}
-            <div className="h-1 w-full bg-gray-800 rounded-full overflow-hidden">
+            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mt-1">
                 <div 
-                    className={`h-full rounded-full ${color.replace('text-', 'bg-')} opacity-80`} 
+                    className={`h-full rounded-full ${color.replace('text-', 'bg-')} transition-all duration-1000 ease-out`} 
                     style={{ width: `${score}%` }}
                 ></div>
-            </div>
-            
-            <div className="text-[9px] text-gray-600 text-right font-mono">
-                贡献: +{contribution}%
             </div>
         </div>
     );
@@ -212,7 +210,7 @@ const AnalysisLoadingState = () => {
         { id: 0, text: "正在初始化量子网络链接...", sub: "Initializing Quantum Uplink", icon: Globe, color: "text-blue-400", bg: "bg-blue-500" },
         { id: 1, text: "Gemini 3 Pro: 识别市场结构...", sub: "Scanning Market Structure (MSS)", icon: Bot, color: "text-yellow-400", bg: "bg-yellow-500" },
         { id: 2, text: "搜索技术指标 (KDJ, RSI, Vol)...", sub: "Fetching Technical Vectors", icon: Activity, color: "text-cyan-400", bg: "bg-cyan-500" },
-        { id: 3, text: "推演三种市场剧本 (牛/熊/震)...", sub: "Simulating Market Scenarios", icon: GitCommit, color: "text-purple-400", bg: "bg-purple-500" },
+        { id: 3, text: "正在推演牛熊剧本与概率...", sub: "Calculating Scenario Deductions", icon: GitCommit, color: "text-purple-400", bg: "bg-purple-500" },
         { id: 4, text: "正在生成最终决策报告...", sub: "Finalizing Tactical Report", icon: BrainCircuit, color: "text-green-400", bg: "bg-green-500" }
     ];
 
@@ -366,7 +364,6 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
   }
 
   return (
-    // REMOVED OVERFLOW HIDDEN SO TOOLTIPS CAN POP OUT
     <div className="bg-[#151c24] rounded-xl border border-gray-800 p-6 flex flex-col h-full relative shadow-2xl">
         {isRefreshing && (
           <div className="absolute inset-0 bg-[#151c24]/90 backdrop-blur-sm z-50 flex flex-col items-center justify-center transition-opacity duration-300 rounded-xl">
@@ -396,44 +393,36 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
             <div className="mt-4 flex flex-col gap-2">
                 <div className="flex items-center gap-3 text-xs group relative">
                     <div className="text-gray-500 font-bold uppercase text-[10px] tracking-wide border-b border-dotted border-gray-600 flex items-center gap-1 cursor-help">
-                        AI 胜率预测 <HelpCircle className="w-3 h-3 text-gray-600 hover:text-white" />
+                        胜率推演 (Calculated Probability)
                     </div>
                     
                     {/* Tooltip for Win Rate Calculation */}
                     <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-72 p-4 bg-gray-900 border border-gray-700 text-gray-300 rounded shadow-xl z-50 leading-relaxed pointer-events-none">
                         <strong className="text-white block mb-2 text-xs border-b border-gray-700 pb-1 flex items-center gap-2">
                              <Target className="w-3 h-3 text-blue-400" />
-                             加权计算公式 (Weighted Calculation)
+                             模型权重算法 (Weighted Model)
                         </strong>
                         <p className="text-[10px] mb-3 text-gray-400 italic">
                             总胜率 = (技术×0.4) + (资金×0.3) + (情绪×0.2) + (宏观×0.1)
                         </p>
-                        <div className="space-y-1 font-mono text-[10px]">
-                            {analysis.scoreDrivers && (
-                                <>
-                                <div className="flex justify-between"><span>技术 ({analysis.scoreDrivers.technical}) × 40%</span> <span className="text-blue-400">={(analysis.scoreDrivers.technical * 0.4).toFixed(1)}</span></div>
-                                <div className="flex justify-between"><span>资金 ({analysis.scoreDrivers.institutional}) × 30%</span> <span className="text-yellow-400">={(analysis.scoreDrivers.institutional * 0.3).toFixed(1)}</span></div>
-                                <div className="flex justify-between"><span>情绪 ({analysis.scoreDrivers.sentiment}) × 20%</span> <span className="text-green-400">={(analysis.scoreDrivers.sentiment * 0.2).toFixed(1)}</span></div>
-                                <div className="flex justify-between border-b border-gray-700 pb-1"><span>宏观 ({analysis.scoreDrivers.macro}) × 10%</span> <span className="text-purple-400">={(analysis.scoreDrivers.macro * 0.1).toFixed(1)}</span></div>
-                                <div className="flex justify-between pt-1 font-bold text-white"><span>TOTAL</span> <span>{analysis.winRate}%</span></div>
-                                </>
-                            )}
-                        </div>
                     </div>
 
                     <div className="h-2 w-24 bg-gray-800 rounded-full overflow-hidden border border-gray-700">
                         <div className={`h-full rounded-full transition-all duration-1000 ${isBuy ? 'bg-green-500' : isSell ? 'bg-red-500' : 'bg-gray-500'}`} style={{ width: `${analysis.winRate}%` }}></div>
                     </div>
-                    <span className="font-mono font-bold text-white">{analysis.winRate}%</span>
+                    <span className="font-mono font-bold text-white text-lg">{analysis.winRate}%</span>
                 </div>
                 
-                {/* NEW: VISIBLE SCORE DRIVERS (DYNAMIC) */}
+                {/* NEW: VISIBLE SCORE DRIVERS (GRID LAYOUT) */}
                 {analysis.scoreDrivers && (
-                    <div className="grid grid-cols-4 gap-2 mt-2 w-full max-w-[400px]">
-                         <ScoreDriverItem label="技术 (Tech)" weight={40} score={analysis.scoreDrivers.technical} color="text-blue-400" />
-                         <ScoreDriverItem label="资金 (Flow)" weight={30} score={analysis.scoreDrivers.institutional} color="text-yellow-400" />
-                         <ScoreDriverItem label="情绪 (Sent)" weight={20} score={analysis.scoreDrivers.sentiment} color="text-green-400" />
-                         <ScoreDriverItem label="宏观 (Macr)" weight={10} score={analysis.scoreDrivers.macro} color="text-purple-400" />
+                    <div className="mt-3">
+                        <h4 className="text-[9px] text-gray-600 font-bold uppercase mb-2 flex items-center gap-1"><Sliders className="w-3 h-3"/> 胜率归因因子 (Score Drivers)</h4>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 w-full">
+                             <ScoreDriverItem label="技术 (Tech)" weight={40} score={analysis.scoreDrivers.technical} color="text-blue-400" icon={<Activity className="w-3 h-3"/>} />
+                             <ScoreDriverItem label="资金 (Flow)" weight={30} score={analysis.scoreDrivers.institutional} color="text-yellow-400" icon={<Briefcase className="w-3 h-3"/>} />
+                             <ScoreDriverItem label="情绪 (Sent)" weight={20} score={analysis.scoreDrivers.sentiment} color="text-green-400" icon={<Users className="w-3 h-3"/>} />
+                             <ScoreDriverItem label="宏观 (Macr)" weight={10} score={analysis.scoreDrivers.macro} color="text-purple-400" icon={<Globe className="w-3 h-3"/>} />
+                        </div>
                     </div>
                 )}
             </div>
@@ -442,86 +431,90 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
           <div className="text-right flex flex-col items-end gap-3">
               <div className="bg-[#0b1215] p-3 rounded-xl border border-gray-800 flex flex-col items-end gap-1 group relative cursor-help">
                   <div className="flex items-center gap-1.5 text-[9px] text-gray-500 font-bold uppercase tracking-wider">
-                    <History className="w-3 h-3" /> 历史回测胜率
-                    <HelpCircle className="w-3 h-3 text-gray-700 group-hover:text-gray-400" />
+                    <History className="w-3 h-3" /> 历史模式回测
                   </div>
                   <span className="text-2xl font-mono font-medium text-blue-400">{analysis.historicalWinRate}%</span>
-                   {/* Tooltip */}
-                   <div className="absolute right-0 top-full mt-2 hidden group-hover:block w-52 p-2 bg-gray-900 border border-gray-700 text-[10px] text-gray-300 rounded shadow-xl z-50 text-left leading-relaxed">
-                        <strong className="text-white block mb-1">模式匹配 (Pattern Match)</strong>
-                        AI 检索了过去 5 年类似的 K 线形态（如双底、突破、顶背离），计算其在随后的统计上涨概率。
-                    </div>
               </div>
               <div className="flex items-center gap-2 bg-[#0b1215] px-3 py-1.5 rounded-lg border border-gray-800/50"><span className="text-[9px] text-gray-500 font-bold uppercase">盈亏比 (R/R)</span><span className="text-xs font-mono font-bold text-white">{analysis.riskRewardRatio}:1</span></div>
           </div>
         </div>
 
-        {analysis.marketRegime && (
-            <div className="mb-6 grid grid-cols-3 gap-3">
-                <RadarItem label="宏观 (Macro)" value={analysis.marketRegime.macroTrend} icon={<Globe className="w-3 h-3"/>} color={analysis.marketRegime.macroTrend.includes('Risk-On') || analysis.marketRegime.macroTrend.includes('进攻') ? 'text-green-400' : analysis.marketRegime.macroTrend.includes('Risk-Off') || analysis.marketRegime.macroTrend.includes('避险') ? 'text-red-400' : 'text-gray-400'} />
-                <RadarItem label="板块 (Sector)" value={analysis.marketRegime.sectorPerformance} icon={<BarChart4 className="w-3 h-3"/>} color={analysis.marketRegime.sectorPerformance.includes('Strong') || analysis.marketRegime.sectorPerformance.includes('强势') ? 'text-green-400' : analysis.marketRegime.sectorPerformance.includes('Divergent') || analysis.marketRegime.sectorPerformance.includes('背离') ? 'text-yellow-400' : 'text-gray-400'} />
-                 <RadarItem label="资金 (Flow)" value={analysis.marketRegime.institutionalAction} icon={<Users className="w-3 h-3"/>} color={analysis.marketRegime.institutionalAction.includes('Accumulation') || analysis.marketRegime.institutionalAction.includes('吸筹') ? 'text-green-400' : analysis.marketRegime.institutionalAction.includes('Distribution') || analysis.marketRegime.institutionalAction.includes('派发') ? 'text-red-400' : 'text-gray-400'} />
-            </div>
-        )}
-
-        {/* --- SCENARIO ANALYSIS SECTION (NEW) --- */}
+        {/* --- SCENARIO DEDUCTION SECTION (IMPROVED) --- */}
         {analysis.scenarios && (
-          <div className="mb-6 bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-2 opacity-5"><GitCommit className="w-16 h-16 text-purple-500"/></div>
+          <div className="mb-6 bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-2 opacity-5"><GitCommit className="w-20 h-20 text-purple-500"/></div>
              <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
-                 <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演 (Scenario Simulation)
+                 <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Market Deductions)
              </h3>
 
-             <div className="space-y-3">
+             <div className="grid grid-cols-1 gap-4">
                 {/* Bullish Scenario */}
-                <div className="flex flex-col gap-1.5">
-                   <div className="flex justify-between text-xs items-center">
-                      <span className="font-bold text-green-400 flex items-center gap-1.5"><ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本 (Bullish)</span>
-                      <span className="font-mono text-white">{analysis.scenarios.bullish.probability}%</span>
+                <div className="group">
+                   <div className="flex justify-between text-xs items-center mb-1">
+                      <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
+                          <ArrowUpRight className="w-3.5 h-3.5"/> 
+                          牛市剧本 (Bullish)
+                      </span>
+                      <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
                    </div>
-                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
+                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
                    </div>
-                   <div className="flex justify-between items-start text-[9px] text-gray-500 mt-0.5">
-                      <span className="text-gray-400">{analysis.scenarios.bullish.description}</span>
-                      <span className="font-mono text-green-300 bg-green-900/20 px-1 rounded border border-green-500/20">Target: {formatCurrency(analysis.scenarios.bullish.targetPrice)}</span>
+                   <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50 group-hover:border-green-500/30 transition-colors">
+                      <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
+                      <div className="text-right">
+                          <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                          <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
+                      </div>
                    </div>
                 </div>
 
                 {/* Neutral Scenario */}
-                <div className="flex flex-col gap-1.5">
-                   <div className="flex justify-between text-xs items-center">
-                      <span className="font-bold text-yellow-400 flex items-center gap-1.5"><Minus className="w-3.5 h-3.5"/> 震荡剧本 (Neutral)</span>
-                      <span className="font-mono text-white">{analysis.scenarios.neutral.probability}%</span>
+                <div className="group">
+                   <div className="flex justify-between text-xs items-center mb-1">
+                      <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                          <Minus className="w-3.5 h-3.5"/> 
+                          震荡剧本 (Neutral)
+                      </span>
+                      <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
                    </div>
-                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-yellow-500 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
+                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
                    </div>
-                   <div className="flex justify-between items-start text-[9px] text-gray-500 mt-0.5">
-                      <span className="text-gray-400">{analysis.scenarios.neutral.description}</span>
-                      <span className="font-mono text-yellow-300 bg-yellow-900/20 px-1 rounded border border-yellow-500/20">Target: {formatCurrency(analysis.scenarios.neutral.targetPrice)}</span>
+                   <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50 group-hover:border-yellow-500/30 transition-colors">
+                      <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
+                      <div className="text-right">
+                          <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
+                          <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
+                      </div>
                    </div>
                 </div>
 
                 {/* Bearish Scenario */}
-                <div className="flex flex-col gap-1.5">
-                   <div className="flex justify-between text-xs items-center">
-                      <span className="font-bold text-red-400 flex items-center gap-1.5"><ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本 (Bearish)</span>
-                      <span className="font-mono text-white">{analysis.scenarios.bearish.probability}%</span>
+                <div className="group">
+                   <div className="flex justify-between text-xs items-center mb-1">
+                      <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                          <ArrowDownRight className="w-3.5 h-3.5"/> 
+                          熊市剧本 (Bearish)
+                      </span>
+                      <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
                    </div>
-                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-red-500 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
+                   <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                      <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
                    </div>
-                   <div className="flex justify-between items-start text-[9px] text-gray-500 mt-0.5">
-                      <span className="text-gray-400">{analysis.scenarios.bearish.description}</span>
-                      <span className="font-mono text-red-300 bg-red-900/20 px-1 rounded border border-red-500/20">Target: {formatCurrency(analysis.scenarios.bearish.targetPrice)}</span>
+                   <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50 group-hover:border-red-500/30 transition-colors">
+                      <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
+                      <div className="text-right">
+                          <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                          <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
+                      </div>
                    </div>
                 </div>
              </div>
           </div>
         )}
 
-        {/* --- TECHNICAL COCKPIT (UPGRADED) --- */}
+        {/* --- TECHNICAL COCKPIT --- */}
         {analysis.technicalIndicators && (
              <div className="mb-6 bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Cpu className="w-16 h-16 text-blue-500"/></div>
