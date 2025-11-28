@@ -105,6 +105,7 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
           model: 'gemini-2.5-flash', 
           contents: prompt,
           config: {
+            temperature: 0.1, // LOW TEMP FOR CONSISTENCY
             tools: [{ googleSearch: {} }],
             safetySettings: [
               { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -182,15 +183,15 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     if (isAShare) {
         searchInstructions = `
           MANDATORY SEARCH (BLIND/HYBRID):
-          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入"
-          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext}"
+          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入 实时"
+          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext} 最新值"
           3. "雪球 ${symbol} 讨论区 热门观点 成交量分析"
         `;
     } else if (isCrypto) {
         searchInstructions = `
           MANDATORY SEARCH (BLIND/HYBRID):
           1. "${symbol} funding rate open interest ${tfSearch} current"
-          2. "${symbol} RSI KDJ indicator values ${tfSearch} today"
+          2. "${symbol} RSI KDJ indicator values ${tfSearch} exact number"
           3. "${symbol} liquidation levels heatmap"
         `;
     } else {
@@ -204,9 +205,20 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
     // UNIFIED SYSTEM PROMPT: THE CHAIN OF DEDUCTION
     const systemPrompt = `
-      You are **TradeGuard Pro**, an elite institutional trading AI.
+      You are **TradeGuard Pro**, an elite institutional trading AI designed for **determinism and precision**.
       
-      **CORE OBJECTIVE**: Generate a coherent, mathematically deducted trading plan. All components must form a logical chain, not random outputs.
+      **CONSISTENCY PROTOCOL**:
+      - Do not hallucinate. If data is unclear, assume NEUTRAL.
+      - Apply the **SCORING RUBRIC** strictly. Do not deviate.
+      
+      **SCORING RUBRIC (评分锚定标准)**:
+      1. **Technical (技术面)**:
+         - Score > 80 IF: Price > EMA20 AND (MACD Golden Cross OR Volume Breakout).
+         - Score < 40 IF: Price < EMA20 AND (MACD Death Cross OR RSI < 40).
+         - Otherwise: 40-60 (Neutral).
+      2. **Institutional (资金面)**:
+         - Score > 70 IF: Net Inflow > 0 AND Block Trades = High.
+         - Score < 30 IF: Net Inflow < 0.
       
       **THE LOGIC CHAIN (执行链条)**:
       1.  **DATA INTAKE**: 
@@ -214,9 +226,9 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           - IF Search: Extract exact numeric values (RSI, Vol, Net Inflow).
       
       2.  **DRIVER CALCULATION (归因计算)**:
-          - Calculate 4 sub-scores (0-100): Technical, Institutional, Sentiment, Macro.
+          - Apply the Rubric above to calculate 4 sub-scores (0-100).
           - **Win Rate** = (Tech*0.4 + Inst*0.3 + Sent*0.2 + Macro*0.1).
-          - *Constraint*: If Institutional score is low (<40), Win Rate cannot exceed 65%.
+          - *CRITICAL CONSTRAINT*: If Institutional Score is < 40, Maximum Win Rate is capped at 60% regardless of Technicals (Fake Pump Protection).
       
       3.  **SCENARIO DEDUCTION (情景推演)**:
           - Based *strictly* on the calculated Win Rate:
@@ -283,7 +295,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "redTeaming": {
             "risks": ["Risk 1 (Chinese)", "Risk 2"],
             "mitigations": ["Action 1 (Chinese)"],
-            "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            "severity": "LOW" | "MEDIUM" | "HIGH" | 'CRITICAL',
             "stressTest": "string (Scenario description in Chinese)"
         },
         "modelFusionConfidence": number, 
@@ -300,7 +312,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       Execute Logic Chain for ${symbol} on ${timeframe}.
       ${searchInstructions}
       
-      ${imageBase64 ? `IMAGE MODE: Analyze the attached ${timeframe} chart visually.` : 'BLIND MODE: Rely on Search Data.'}
+      ${imageBase64 ? `IMAGE MODE: Analyze the attached ${timeframe} chart visually. Cross-reference visual patterns with search data.` : 'BLIND MODE: Rely on Search Data.'}
       
       REQUIREMENTS:
       1. Ensure Scenarios (Bull/Bear/Neutral) probability sums to 100%.
@@ -316,7 +328,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       config: {
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json" 
+          responseMimeType: "application/json",
+          // OPTIMIZATION FOR CONSISTENCY:
+          // Low temperature forces the model to pick the most likely tokens, reducing variance.
+          temperature: 0.1, 
+          topK: 1, 
+          topP: 0.95
       }
     };
 
@@ -345,10 +362,26 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.scoreDrivers = { technical: baseScore, institutional: baseScore, sentiment: baseScore, macro: baseScore };
         }
         
-        // Ensure consistency between Drivers and WinRate
+        // --- CONSISTENCY ENFORCEMENT & DIVERGENCE PENALTY ---
+        // We recalculate the win rate strictly here to prevent LLM math errors or hallucinations.
         const { technical, institutional, sentiment, macro } = data.scoreDrivers;
-        const calculatedWinRate = Math.round((technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1));
-        data.winRate = calculatedWinRate; // Enforce calculation
+        
+        let calculatedWinRate = Math.round((technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1));
+        
+        // Divergence Penalty: If Technical is high but Institutional is low, penalize the win rate.
+        // This simulates "Fake Pump" detection logic.
+        if (technical > 70 && institutional < 40) {
+            console.log("Applying Divergence Penalty (Fake Pump Detected)");
+            calculatedWinRate -= 15; // Penalize
+        }
+        
+        data.winRate = Math.max(0, Math.min(100, calculatedWinRate)); // Clamp 0-100
+
+        // Ensure Signal Matches Win Rate
+        if (data.winRate >= 60) data.signal = SignalType.BUY;
+        else if (data.winRate <= 40) data.signal = SignalType.SELL;
+        else data.signal = SignalType.NEUTRAL;
+        // ----------------------------------------------------
 
         // Ensure Structure consistency (Fallback for old cache or hallucinations)
         if (!data.tradingSetup) {
@@ -373,10 +406,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.scenarios.bullish.targetPrice = parsePrice(data.scenarios.bullish.targetPrice);
             data.scenarios.bearish.targetPrice = parsePrice(data.scenarios.bearish.targetPrice);
             data.scenarios.neutral.targetPrice = parsePrice(data.scenarios.neutral.targetPrice);
-        }
-
-        if (!['BUY', 'SELL', 'NEUTRAL'].includes(data.signal)) {
-            data.signal = SignalType.NEUTRAL;
         }
 
         return data as RealTimeAnalysis;
@@ -421,6 +450,7 @@ export const performBacktest = async (symbol: string, strategy: BacktestStrategy
             model: 'gemini-3-pro-preview', 
             contents: prompt,
             config: {
+                temperature: 0.1, // LOW TEMP FOR CONSISTENCY
                 tools: [{ googleSearch: {} }],
                 responseMimeType: "application/json"
             }
