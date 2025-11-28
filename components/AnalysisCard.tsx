@@ -74,6 +74,18 @@ const translateTerm = (term: string | undefined): string => {
   return term; 
 };
 
+// Helper: Render Institutional Data with "Unknown" handling
+const renderInstitutionalValue = (val: string | undefined) => {
+    if (!val || val === 'Unknown' || val === 'N/A' || val.includes('未披露') || val.includes('Unknown')) {
+        return <span className="text-[10px] text-gray-600 font-medium italic border border-gray-800 px-1.5 py-0.5 rounded">数据未披露 (N/A)</span>;
+    }
+    const isNegative = val.includes('-') || val.includes('Outflow') || val.includes('流出');
+    // Using standard logic: Green for Inflow (Positive), Red for Outflow (Negative)
+    // Note: If using A-share convention (Red=Up/In), this might need swapping. 
+    // Assuming standard western/crypto app convention here (Green=Good).
+    return <span className={`text-xs font-mono font-bold ${isNegative ? 'text-red-400' : 'text-green-400'}`}>{val}</span>;
+};
+
 // Driver Item Component
 const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string, weight: number, score: number, color: string, icon: React.ReactNode }) => {
     const contribution = (score * (weight / 100)).toFixed(1);
@@ -652,8 +664,14 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                             {/* Institutional */}
                             {analysis.institutionalData && (
                                 <div className="mt-4 pt-3 border-t border-gray-800/50 grid grid-cols-2 gap-3 bg-[#151c24]/50 -mx-4 -mb-4 px-4 py-3">
-                                    <div className="flex flex-col"><span className="text-[9px] text-gray-500 uppercase font-bold flex gap-1 items-center"><Briefcase className="w-3 h-3"/> 主力净流入</span><span className={`text-xs font-mono font-bold ${analysis.institutionalData.netInflow.includes('-') ? 'text-red-400' : 'text-green-400'}`}>{analysis.institutionalData.netInflow}</span></div>
-                                    <div className="flex flex-col items-end"><span className="text-[9px] text-gray-500 uppercase font-bold">大单活跃度</span><span className="text-xs font-mono text-white">{analysis.institutionalData.blockTrades}</span></div>
+                                    <div className="flex flex-col">
+                                        <span className="text-[9px] text-gray-500 uppercase font-bold flex gap-1 items-center"><Briefcase className="w-3 h-3"/> 主力净流入</span>
+                                        {renderInstitutionalValue(analysis.institutionalData.netInflow)}
+                                    </div>
+                                    <div className="flex flex-col items-end">
+                                        <span className="text-[9px] text-gray-500 uppercase font-bold">大单活跃度</span>
+                                        {renderInstitutionalValue(analysis.institutionalData.blockTrades)}
+                                    </div>
                                 </div>
                             )}
                         </div>
