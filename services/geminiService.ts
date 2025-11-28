@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 import { STRATEGIES } from "../constants";
@@ -182,43 +181,34 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     let searchInstructions = "";
     if (isAShare) {
         searchInstructions = `
-          DATA TARGETS (A-SHARE):
-          1. "东方财富 ${symbol} 主力资金净流入 今日" (Look for specific numbers like '1.5亿', '-3000万')
-          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 最新值"
-          3. "雪球 ${symbol} 讨论区 机构观点"
+          MANDATORY DATA EXTRACTION (HYBRID):
+          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入"
+          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext} 最新值"
+          3. "雪球 ${symbol} 讨论区 市场情绪 机构观点"
         `;
     } else if (isCrypto) {
         searchInstructions = `
-          DATA TARGETS (CRYPTO):
-          1. "${symbol} funding rate open interest heatmap"
-          2. "${symbol} liquidation levels"
-          3. "${symbol} exchange net flow" (If unavailable, return 'Unknown')
+          MANDATORY DATA EXTRACTION (HYBRID):
+          1. "${symbol} funding rate open interest ${tfSearch} current"
+          2. "${symbol} RSI KDJ indicator values ${tfSearch} exact number"
+          3. "${symbol} liquidation levels heatmap"
         `;
     } else {
         searchInstructions = `
-          DATA TARGETS (US STOCK):
-          1. "${symbol} dark pool block trades today"
-          2. "${symbol} unusual options activity flow"
-          3. "${symbol} institutional ownership changes"
-          NOTE: Real-time "Net Inflow" is often proprietary for US stocks. Verify if public data exists.
+          MANDATORY DATA EXTRACTION (HYBRID):
+          1. "${symbol} unusual options activity today RSI value ${tfSearch}"
+          2. "${symbol} institutional net inflow current data"
+          3. "${symbol} technical support resistance levels ${tfSearch}"
         `;
     }
 
-    // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL + ZERO HALLUCINATION
+    // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL
     const systemPrompt = `
       You are **TradeGuard Pro**, an elite institutional trading AI.
       
       **MISSION**: Zero Variance. Rigorous Deduction. No Hallucinations.
       **LANGUAGE**: All analysis content MUST be in **SIMPLIFIED CHINESE (简体中文)** for readability.
       
-      **ZERO HALLUCINATION PROTOCOL (STRICT)**:
-      1. **DATA INTEGRITY**: You are strictly forbidden from inventing numbers to fill JSON fields.
-      2. **MISSING DATA HANDLING**:
-         - **US Stocks/Crypto**: Real-time "Main Force Net Inflow" (主力净流入) is often NOT publicly available.
-         - **RULE**: If Google Search does NOT return a specific, recent numeric value from a credible source, you MUST set the field to "Unknown" (string).
-         - **PROHIBITED**: Do not calculate/estimate inflow based on candle size or price action.
-      3. **A-Shares**: Attempt to find the specific "主力净流入" value. If explicitly not found, set to "Unknown".
-
       **METHODOLOGY: THE TRINITY CONSENSUS PROTOCOL (三位一体共识协议)**
       You must simulate three distinct analysts to ensure consistency:
       
@@ -237,7 +227,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           - Rule: Trend is friend until invalidation.
           - Output: A structure-based score (0-100).
       
-      **STEP-BY-STEP EXECUTION CHAIN**:
+      **STEP-BY-STEP EXECUTION CHAIN (LOGIC SUTURE)**:
       
       1.  **DATA EXTRACTION**: 
           - Extract exact values for RSI, MACD, Volume.
@@ -258,6 +248,10 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       5.  **ARCHITECT BLUEPRINT (COHERENCE CHECK)**:
           - The 'tradingSetup' must be the **DIRECT LOGICAL CONSEQUENCE** of the Consensus. 
           - **CRITICAL**: If Consensus is "Bearish", the setup MUST be "Short/Sell" or "Wait". You cannot suggest Long.
+          - 'reasoning' must strictly explain *why* the Quant/Money/Chart analysis led to this specific blueprint.
+      
+      6.  **RED TEAM STRESS TEST**:
+          - Stress test the specific Blueprint defined in step 5.
       
       Current Context:
       - Asset: ${symbol} (${currentPrice})
@@ -303,7 +297,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             "rsi": number, "macdStatus": "string", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
         },
         "institutionalData": {
-            "netInflow": "string (Value OR 'Unknown')", "blockTrades": "string (Value OR 'Unknown')", "mainForceSentiment": "string"
+            "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string"
         },
         "scenarios": {
             "bullish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
@@ -350,11 +344,10 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
-          // ZERO TEMP + SEED FOR MAX DETERMINISM
+          // ZERO TEMP FOR MAX CONSISTENCY
           temperature: 0.0, 
           topK: 1, 
-          topP: 0.95,
-          seed: 42
+          topP: 0.95
       }
     };
 
@@ -466,8 +459,7 @@ export const performBacktest = async (symbol: string, strategy: BacktestStrategy
             config: {
                 temperature: 0.1, // LOW TEMP FOR CONSISTENCY
                 tools: [{ googleSearch: {} }],
-                responseMimeType: "application/json",
-                seed: 42
+                responseMimeType: "application/json"
             }
         });
 
