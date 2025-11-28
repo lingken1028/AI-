@@ -48,12 +48,12 @@ export interface TechnicalIndicators {
     macdStatus: 'Golden Cross (金叉)' | 'Death Cross (死叉)' | 'Divergence (背离)' | 'Neutral (中性)';
     emaAlignment: 'Bullish Stack (多头排列)' | 'Bearish Stack (空头排列)' | 'Tangled (纠缠)';
     bollingerStatus: 'Squeeze (收口)' | 'Expansion (开口)' | 'Upper Band (触顶)' | 'Lower Band (触底)';
-    kdjStatus?: string; // e.g. "Golden Cross (金叉)", "Overbought (超买)"
-    volumeStatus?: string; // e.g. "Heavy Volume (放量)", "Shrinking (缩量)"
+    kdjStatus?: string; 
+    volumeStatus?: string; 
 }
 
 export interface InstitutionalData {
-    netInflow: string; // e.g., "+1.2B" or "-500M"
+    netInflow: string; 
     blockTrades: 'High Activity' | 'Moderate' | 'Low';
     mainForceSentiment: 'Aggressive Buy' | 'Passive Sell' | 'Wait & See';
 }
@@ -80,26 +80,46 @@ export interface MarketScenario {
     description: string;
 }
 
-// NEW: Structured Red Teaming Data
 export interface RedTeaming {
     risks: string[];
     mitigations: string[];
     severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-    stressTest: string; // A specific "what-if" scenario
+    stressTest: string; 
 }
 
-// NEW: Structured Trading Logic/Rules
 export interface TradingSetup {
-    strategyIdentity: string; // e.g. "Bull Flag Breakout"
-    confirmationTriggers: string[]; // List of conditions met
-    invalidationPoint: string; // Strict stop condition logic
+    strategyIdentity: string; 
+    confirmationTriggers: string[]; 
+    invalidationPoint: string; 
+}
+
+// NEW: Trinity Consensus for Rigor
+export interface TrinityConsensus {
+    quantScore: number; // Pure math (0-100)
+    smartMoneyScore: number; // Volume/Flow (0-100)
+    chartPatternScore: number; // Structure (0-100)
+    consensusVerdict: 'STRONG_CONFLUENCE (强共振)' | 'MODERATE (一般)' | 'DIVERGENCE (背离)';
+}
+
+// NEW: Smart Money specific analysis (VSA/Order Flow)
+export interface SmartMoneyAnalysis {
+    retailSentiment: 'Fear' | 'Greed' | 'Neutral';
+    smartMoneyAction: 'Accumulating (吸筹)' | 'Distributing (派发)' | 'Marking Up (拉升)' | 'Inactive';
+    orderBlockStatus: 'Active Supply Zone' | 'Active Demand Zone' | 'None';
+}
+
+// NEW: Trend Resonance
+export interface TrendResonance {
+    trendHTF: 'Bullish' | 'Bearish' | 'Neutral'; // Higher Timeframe
+    trendLTF: 'Bullish' | 'Bearish' | 'Neutral'; // Lower Timeframe
+    resonance: 'Resonant (顺势)' | 'Conflict (逆势/回调)' | 'Chaos (震荡)';
 }
 
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
   winRate: number; 
-  scoreDrivers?: ScoreDrivers; // Breakdown of the win rate
+  scoreDrivers?: ScoreDrivers; 
   historicalWinRate: number; 
   entryPrice: number;
   entryStrategy: string; 
@@ -114,27 +134,29 @@ export interface AIAnalysis {
   marketStructure: string;
   keyFactors: string[]; 
   kLineTrend: string; 
-  trendResonance: string; 
-  marketRegime?: MarketRegime; 
   
-  // New Technical Fields
+  // New Enhanced Fields
+  trendResonance?: TrendResonance;
+  
+  marketRegime?: MarketRegime; 
   technicalIndicators?: TechnicalIndicators;
   institutionalData?: InstitutionalData;
+  smartMoneyAnalysis?: SmartMoneyAnalysis; // New
 
-  // New Scenario Fields
   scenarios?: {
     bullish: MarketScenario;
     bearish: MarketScenario;
     neutral: MarketScenario;
   };
+  
+  // Consensus Matrix
+  trinityConsensus?: TrinityConsensus; // New
 
-  // Structured Logic & Risks
   tradingSetup?: TradingSetup;
   redTeaming?: RedTeaming;
   
   confidenceDrivers: string[]; 
   guruInsights: GuruInsight[]; 
-  // redTeamingLogic: string; // DEPRECATED in favor of redTeaming object
   modelFusionConfidence: number; 
   futurePrediction?: FuturePrediction; 
   riskManagement?: RiskManagement;
@@ -148,7 +170,6 @@ export interface StockSymbol {
   currentPrice: number;
 }
 
-// Backtesting Types - OPTIMIZED STRATEGIES
 export enum BacktestStrategy {
   ICT_SILVER_BULLET = "ICT Silver Bullet (聪明钱时间窗)",
   VWAP_MEAN_REVERSION = "VWAP Institutional Reversion (机构均值回归)",

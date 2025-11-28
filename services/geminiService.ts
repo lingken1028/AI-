@@ -171,7 +171,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
     const horizon = getPredictionHorizon(timeframe);
     
-    // Asset Classification
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
     
@@ -182,75 +181,79 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     let searchInstructions = "";
     if (isAShare) {
         searchInstructions = `
-          MANDATORY SEARCH (BLIND/HYBRID):
-          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入 实时"
+          MANDATORY DATA EXTRACTION (HYBRID):
+          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入"
           2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext} 最新值"
-          3. "雪球 ${symbol} 讨论区 热门观点 成交量分析"
+          3. "雪球 ${symbol} 讨论区 市场情绪 机构观点"
         `;
     } else if (isCrypto) {
         searchInstructions = `
-          MANDATORY SEARCH (BLIND/HYBRID):
+          MANDATORY DATA EXTRACTION (HYBRID):
           1. "${symbol} funding rate open interest ${tfSearch} current"
           2. "${symbol} RSI KDJ indicator values ${tfSearch} exact number"
           3. "${symbol} liquidation levels heatmap"
         `;
     } else {
         searchInstructions = `
-          MANDATORY SEARCH (BLIND/HYBRID):
+          MANDATORY DATA EXTRACTION (HYBRID):
           1. "${symbol} unusual options activity today RSI value ${tfSearch}"
           2. "${symbol} institutional net inflow current data"
-          3. "${symbol} support resistance levels ${tfSearch} analysis"
+          3. "${symbol} technical support resistance levels ${tfSearch}"
         `;
     }
 
-    // UNIFIED SYSTEM PROMPT: THE CHAIN OF DEDUCTION
+    // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL
     const systemPrompt = `
-      You are **TradeGuard Pro**, an elite institutional trading AI designed for **determinism and precision**.
+      You are **TradeGuard Pro**, an elite institutional trading AI.
       
-      **CONSISTENCY PROTOCOL**:
-      - Do not hallucinate. If data is unclear, assume NEUTRAL.
-      - Apply the **SCORING RUBRIC** strictly. Do not deviate.
+      **MISSION**: Zero Variance. Rigorous Deduction. No Hallucinations.
       
-      **SCORING RUBRIC (评分锚定标准)**:
-      1. **Technical (技术面)**:
-         - Score > 80 IF: Price > EMA20 AND (MACD Golden Cross OR Volume Breakout).
-         - Score < 40 IF: Price < EMA20 AND (MACD Death Cross OR RSI < 40).
-         - Otherwise: 40-60 (Neutral).
-      2. **Institutional (资金面)**:
-         - Score > 70 IF: Net Inflow > 0 AND Block Trades = High.
-         - Score < 30 IF: Net Inflow < 0.
+      **METHODOLOGY: THE TRINITY CONSENSUS PROTOCOL (三位一体共识协议)**
+      You must simulate three distinct analysts to ensure consistency:
       
-      **THE LOGIC CHAIN (执行链条)**:
-      1.  **DATA INTAKE**: 
-          - IF Image: Identify visual structure (MSS, FVG, Patterns) on the ${timeframe} chart.
-          - IF Search: Extract exact numeric values (RSI, Vol, Net Inflow).
+      1.  **THE QUANT (量化派)**: 
+          - Focus: RSI, Pivot Points, Fibonacci Levels (0.618/0.382), Bollinger Bands.
+          - Rule: If RSI > 70, Bearish bias. If Price < EMA20, Bearish bias.
+          - Output: A math-based score (0-100).
       
-      2.  **DRIVER CALCULATION (归因计算)**:
-          - Apply the Rubric above to calculate 4 sub-scores (0-100).
-          - **Win Rate** = (Tech*0.4 + Inst*0.3 + Sent*0.2 + Macro*0.1).
-          - *CRITICAL CONSTRAINT*: If Institutional Score is < 40, Maximum Win Rate is capped at 60% regardless of Technicals (Fake Pump Protection).
+      2.  **THE SMART MONEY (资金派)**:
+          - Focus: Volume Spread Analysis (VSA), Net Inflow, Order Blocks, Liquidity Sweeps.
+          - Rule: High volume on Up move = Bullish. Divergence = Bearish.
+          - Output: A flow-based score (0-100).
       
-      3.  **SCENARIO DEDUCTION (情景推演)**:
-          - Based *strictly* on the calculated Win Rate:
-          - If Win Rate > 60%: Bullish Scenario is dominant (Prob > 50%).
-          - If Win Rate < 40%: Bearish Scenario is dominant.
-          - If Win Rate 40-60%: Neutral Scenario is dominant.
-          - Generate precise targets for all 3 scenarios.
+      3.  **THE CHARTIST (结构派)**:
+          - Focus: Market Structure (MSS), ICT Concepts (FVG), Wyckoff Patterns, Trend Resonance (HTF vs LTF).
+          - Rule: Trend is friend until invalidation.
+          - Output: A structure-based score (0-100).
       
-      4.  **ARCHITECT BLUEPRINT (交易蓝图)**:
-          - Create a specific Trade Setup for the **Dominant Scenario** found in Step 3.
-          - Identity: Name the setup (e.g., "Bull Flag Breakout").
-          - Triggers: List 3 exact conditions for entry.
-          - Invalidation: exact price level where this specific setup fails.
+      **STEP-BY-STEP EXECUTION CHAIN**:
       
-      5.  **RED TEAM ATTACK (红队风控)**:
-          - Attack the **Architect Blueprint** from Step 4.
-          - "Stress Test": What happens to this setup if a sudden shock occurs?
-          - Risks: What specific weakness exists in the Blueprint?
+      1.  **DATA EXTRACTION**: 
+          - Extract exact values for RSI, MACD, Volume.
+          - *MATH RULE*: Calculate Fibonacci Retracement levels from the recent swing High/Low.
       
-      **LANGUAGE RULE (CRITICAL)**: 
-      - The fields 'tradingSetup', 'redTeaming', 'scenarios.description', 'reasoning', and 'marketStructure' MUST be in **SIMPLIFIED CHINESE (简体中文)**.
-      - Keep English only for technical terms like "RSI", "MACD", "FVG".
+      2.  **TRINITY VOTE**:
+          - Calculate separate scores for Quant, Smart Money, and Chartist.
+          - **Consensus**: If all 3 agree -> High Confidence. If disagree -> Low Confidence (Divergence).
+      
+      3.  **DRIVER CALCULATION**:
+          - Combine the 3 scores into the final 'scoreDrivers' and 'winRate'.
+          - **Penalty**: If Smart Money disagrees with Technicals, deduct 15% from Win Rate (Trap Detection).
+      
+      4.  **SCENARIO DEDUCTION**:
+          - Bull/Bear/Neutral scenarios based *strictly* on the Consensus.
+          - **Target Prices**: MUST be based on calculated Pivot Points or Fibonacci levels.
+      
+      5.  **ARCHITECT BLUEPRINT (COHERENCE CHECK)**:
+          - The 'tradingSetup' must be the LOGICAL CONCLUSION of the Consensus. 
+          - If Consensus is "Bearish", the setup MUST be Short/Sell.
+          - Define *exact* Invalidation Point (Stop Loss).
+      
+      6.  **RED TEAM**:
+          - Stress test the specific Blueprint defined in step 5.
+      
+      **LANGUAGE RULE**: 
+      - The fields 'tradingSetup', 'redTeaming', 'scenarios.description', 'reasoning', 'marketStructure', 'smartMoneyAnalysis' MUST be in **SIMPLIFIED CHINESE (简体中文)**.
       
       Current Context:
       - Asset: ${symbol} (${currentPrice})
@@ -263,6 +266,22 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "scoreDrivers": {
             "technical": number, "institutional": number, "sentiment": number, "macro": number 
         },
+        "trinityConsensus": {
+            "quantScore": number,
+            "smartMoneyScore": number,
+            "chartPatternScore": number,
+            "consensusVerdict": "STRONG_CONFLUENCE (强共振)" | "MODERATE (一般)" | "DIVERGENCE (背离)"
+        },
+        "smartMoneyAnalysis": {
+            "retailSentiment": "Fear" | "Greed" | "Neutral",
+            "smartMoneyAction": "Accumulating (吸筹)" | "Distributing (派发)" | "Marking Up (拉升)" | "Inactive",
+            "orderBlockStatus": "Active Supply Zone" | "Active Demand Zone" | "None"
+        },
+        "trendResonance": {
+            "trendHTF": "Bullish" | "Bearish",
+            "trendLTF": "Bullish" | "Bearish",
+            "resonance": "Resonant (顺势)" | "Conflict (逆势/回调)" | "Chaos (震荡)"
+        },
         "winRate": number, 
         "historicalWinRate": number, 
         "entryPrice": number,
@@ -272,12 +291,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string (Summary of the Logic Chain in Chinese)",
+        "reasoning": "string (Synthesize Quant, Flow, and Structure into a cohesive logic stream that leads directly to the Setup)",
         "volatilityAssessment": "string (Chinese)",
-        "strategyMatch": "string (e.g. '趋势跟随')",
+        "strategyMatch": "string (e.g. 'ICT + 威科夫')",
         "marketStructure": "string (e.g. '多头排列 (Bullish)')",
         "technicalIndicators": {
-            "rsi": number, "macdStatus": "string (Chinese)", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
+            "rsi": number, "macdStatus": "string", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
         },
         "institutionalData": {
             "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string"
@@ -288,20 +307,18 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             "neutral": { "probability": number, "targetPrice": number, "description": "string (Chinese)" }
         },
         "tradingSetup": {
-            "strategyIdentity": "string (e.g. '威科夫弹簧效应')",
-            "confirmationTriggers": ["Condition 1 (Chinese)", "Condition 2", "Condition 3"],
-            "invalidationPoint": "string (Specific Condition in Chinese)"
+            "strategyIdentity": "string",
+            "confirmationTriggers": ["string"],
+            "invalidationPoint": "string"
         },
         "redTeaming": {
-            "risks": ["Risk 1 (Chinese)", "Risk 2"],
-            "mitigations": ["Action 1 (Chinese)"],
-            "severity": "LOW" | "MEDIUM" | "HIGH" | 'CRITICAL',
-            "stressTest": "string (Scenario description in Chinese)"
+            "risks": ["string"],
+            "mitigations": ["string"],
+            "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            "stressTest": "string"
         },
         "modelFusionConfidence": number, 
-        "guruInsights": [
-             { "name": "Name", "style": "Role", "verdict": "看多/看空", "quote": "Chinese Quote" }
-        ],
+        "guruInsights": [],
         "futurePrediction": {
              "targetHigh": number, "targetLow": number, "confidence": number, "predictionPeriod": "${horizon}"
         }
@@ -309,16 +326,15 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     `;
 
     const userPromptText = `
-      Execute Logic Chain for ${symbol} on ${timeframe}.
+      Execute Trinity Consensus Protocol for ${symbol} on ${timeframe}.
       ${searchInstructions}
       
-      ${imageBase64 ? `IMAGE MODE: Analyze the attached ${timeframe} chart visually. Cross-reference visual patterns with search data.` : 'BLIND MODE: Rely on Search Data.'}
+      ${imageBase64 ? `IMAGE MODE: Analyze the attached ${timeframe} chart visually. Identify Order Blocks and FVG.` : 'BLIND MODE: Rely on Search Data for Math/Volume.'}
       
-      REQUIREMENTS:
-      1. Ensure Scenarios (Bull/Bear/Neutral) probability sums to 100%.
-      2. Ensure Trading Setup matches the highest probability scenario.
-      3. Ensure Red Team specifically critiques that Setup.
-      4. RETURN JSON ONLY.
+      MANDATORY CHECKLIST: 
+      1. Calculate Fibonacci Retracement levels to determine Target Prices.
+      2. Check for Divergence between Price and RSI/Volume.
+      3. ENSURE COHERENCE: The 'tradingSetup' must be a direct logical consequence of the 'trinityConsensus' verdict.
       
       Reference Price: ${currentPrice}
     `;
@@ -329,9 +345,8 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
-          // OPTIMIZATION FOR CONSISTENCY:
-          // Low temperature forces the model to pick the most likely tokens, reducing variance.
-          temperature: 0.1, 
+          // ZERO TEMP FOR MAX CONSISTENCY
+          temperature: 0.0, 
           topK: 1, 
           topP: 0.95
       }
@@ -362,35 +377,28 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.scoreDrivers = { technical: baseScore, institutional: baseScore, sentiment: baseScore, macro: baseScore };
         }
         
-        // --- CONSISTENCY ENFORCEMENT & DIVERGENCE PENALTY ---
-        // We recalculate the win rate strictly here to prevent LLM math errors or hallucinations.
-        const { technical, institutional, sentiment, macro } = data.scoreDrivers;
-        
-        let calculatedWinRate = Math.round((technical * 0.4) + (institutional * 0.3) + (sentiment * 0.2) + (macro * 0.1));
-        
-        // Divergence Penalty: If Technical is high but Institutional is low, penalize the win rate.
-        // This simulates "Fake Pump" detection logic.
-        if (technical > 70 && institutional < 40) {
-            console.log("Applying Divergence Penalty (Fake Pump Detected)");
-            calculatedWinRate -= 15; // Penalize
+        // --- RIGOROUS CONSISTENCY ENFORCEMENT ---
+        // Recalculate Win Rate based on Trinity Consensus if available
+        if (data.trinityConsensus) {
+            const { quantScore, smartMoneyScore, chartPatternScore } = data.trinityConsensus;
+            // Weighted Average
+            let calculatedWinRate = Math.round((quantScore * 0.35) + (smartMoneyScore * 0.35) + (chartPatternScore * 0.3));
+            
+            // Divergence Penalty
+            if (Math.abs(quantScore - smartMoneyScore) > 30) {
+                 console.log("Significant Divergence Detected - Penalizing Win Rate");
+                 calculatedWinRate -= 10;
+                 data.trinityConsensus.consensusVerdict = 'DIVERGENCE (背离)';
+            }
+            
+            data.winRate = Math.max(0, Math.min(100, calculatedWinRate));
         }
-        
-        data.winRate = Math.max(0, Math.min(100, calculatedWinRate)); // Clamp 0-100
 
         // Ensure Signal Matches Win Rate
         if (data.winRate >= 60) data.signal = SignalType.BUY;
         else if (data.winRate <= 40) data.signal = SignalType.SELL;
         else data.signal = SignalType.NEUTRAL;
         // ----------------------------------------------------
-
-        // Ensure Structure consistency (Fallback for old cache or hallucinations)
-        if (!data.tradingSetup) {
-             data.tradingSetup = {
-                 strategyIdentity: "标准趋势结构",
-                 confirmationTriggers: ["价格突破均线", "成交量配合", "MACD金叉"],
-                 invalidationPoint: "收盘跌破支撑位"
-             };
-        }
 
         // Parsing numbers
         ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'].forEach(key => {
