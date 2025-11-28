@@ -538,48 +538,8 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
             </div>
             )}
 
-            {/* 4. STRATEGY BLUEPRINT & 5. EXECUTION */}
-            {analysis.tradingSetup && (
-                <div className="space-y-4">
-                     {/* The Blueprint */}
-                     <LogicBlueprint setup={analysis.tradingSetup} />
-                     
-                     {/* Execution Map (Moved Up) */}
-                     <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800">
-                        <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-3 flex items-center gap-2 px-1 tracking-widest"><Crosshair className="w-3 h-3" /> 交易执行蓝图 (Execution Map)</h3>
-                        <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="col-span-2 bg-blue-500/5 p-3 rounded-xl border border-blue-500/20 flex items-center justify-between group hover:bg-blue-500/10 transition-colors">
-                                <div className="flex flex-col gap-1"><div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase"><Navigation className="w-3 h-3" /> 建议入场 (Entry)</div><div className="text-xs font-mono font-medium text-blue-200 opacity-80 group-hover:opacity-100">{analysis.entryStrategy || "等待信号 (Wait)"}</div></div>
-                                <div className="text-xl font-mono font-bold text-white tracking-tight">{formatCurrency(analysis.entryPrice)}</div>
-                            </div>
-                            <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase"><Target className="w-3 h-3" /> 止盈目标 (TP)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.takeProfit)}</div></div>
-                            <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase"><ShieldAlert className="w-3 h-3" /> 止损风控 (SL)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.stopLoss)}</div></div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800"><div className="flex justify-between items-center mb-2 border-b border-gray-800 pb-1"><span className="text-[9px] text-gray-500 uppercase font-bold">关键位 (Key Levels)</span></div><div className="flex justify-between text-xs font-mono"><span className="text-red-300">{formatCurrency(analysis.resistanceLevel || 0)}</span><span className="text-gray-600">/</span><span className="text-green-300">{formatCurrency(analysis.supportLevel || 0)}</span></div></div>
-                            {analysis.futurePrediction && (
-                                <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col justify-center"><div className="flex items-center justify-between mb-2"><span className="text-[9px] text-blue-300 font-bold uppercase flex gap-1"><Activity className="w-3 h-3"/> 预测区间</span><span className="text-[9px] text-gray-500 font-mono">{analysis.futurePrediction.confidence}%</span></div><div className="relative h-1.5 bg-gray-800 rounded-full w-full overflow-hidden"><div className="absolute top-0 bottom-0 bg-blue-500/20 w-full"></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]" style={{ left: `${predictionPercentage}%` }}></div></div><div className="flex justify-between text-[8px] font-mono text-gray-500 mt-1"><span>{formatCurrency(analysis.futurePrediction.targetLow)}</span><span>{formatCurrency(analysis.futurePrediction.targetHigh)}</span></div></div>
-                            )}
-                        </div>
-                     </div>
-                </div>
-            )}
-
-            {/* 6. RED TEAM CRITIC */}
-            {analysis.redTeaming && (
-                <div>
-                     <div className="flex items-center justify-between mb-2 px-1">
-                         <div className="flex items-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-widest">
-                            <ShieldAlert className="w-3 h-3" /> 红队对抗演练 (Critic Protocol)
-                         </div>
-                         <RadialProgress score={analysis.modelFusionConfidence} size={28} strokeWidth={3} />
-                     </div>
-                     <CriticTerminal redTeam={analysis.redTeaming} />
-                </div>
-            )}
-
-            {/* 7. EVIDENCE & REASONING (Bottom) */}
-            <div className="space-y-4 pt-4 border-t border-gray-800">
+            {/* 4. EVIDENCE & REASONING (MOVED UP) */}
+            <div className="space-y-4">
                 {/* Technical Cockpit */}
                 {analysis.technicalIndicators && (
                     <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group">
@@ -622,6 +582,47 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     </div>
                 </div>
             </div>
+
+            {/* 5. STRATEGY BLUEPRINT & EXECUTION (MOVED DOWN) */}
+            {analysis.tradingSetup && (
+                <div className="space-y-4">
+                     {/* The Blueprint */}
+                     <LogicBlueprint setup={analysis.tradingSetup} />
+                     
+                     {/* Execution Map (Moved Up) */}
+                     <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800">
+                        <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-3 flex items-center gap-2 px-1 tracking-widest"><Crosshair className="w-3 h-3" /> 交易执行蓝图 (Execution Map)</h3>
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="col-span-2 bg-blue-500/5 p-3 rounded-xl border border-blue-500/20 flex items-center justify-between group hover:bg-blue-500/10 transition-colors">
+                                <div className="flex flex-col gap-1"><div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase"><Navigation className="w-3 h-3" /> 建议入场 (Entry)</div><div className="text-xs font-mono font-medium text-blue-200 opacity-80 group-hover:opacity-100">{analysis.entryStrategy || "等待信号 (Wait)"}</div></div>
+                                <div className="text-xl font-mono font-bold text-white tracking-tight">{formatCurrency(analysis.entryPrice)}</div>
+                            </div>
+                            <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase"><Target className="w-3 h-3" /> 止盈目标 (TP)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.takeProfit)}</div></div>
+                            <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase"><ShieldAlert className="w-3 h-3" /> 止损风控 (SL)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.stopLoss)}</div></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800"><div className="flex justify-between items-center mb-2 border-b border-gray-800 pb-1"><span className="text-[9px] text-gray-500 uppercase font-bold">关键位 (Key Levels)</span></div><div className="flex justify-between text-xs font-mono"><span className="text-red-300">{formatCurrency(analysis.resistanceLevel || 0)}</span><span className="text-gray-600">/</span><span className="text-green-300">{formatCurrency(analysis.supportLevel || 0)}</span></div></div>
+                            {analysis.futurePrediction && (
+                                <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col justify-center"><div className="flex items-center justify-between mb-2"><span className="text-[9px] text-blue-300 font-bold uppercase flex gap-1"><Activity className="w-3 h-3"/> 预测区间</span><span className="text-[9px] text-gray-500 font-mono">{analysis.futurePrediction.confidence}%</span></div><div className="relative h-1.5 bg-gray-800 rounded-full w-full overflow-hidden"><div className="absolute top-0 bottom-0 bg-blue-500/20 w-full"></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]" style={{ left: `${predictionPercentage}%` }}></div></div><div className="flex justify-between text-[8px] font-mono text-gray-500 mt-1"><span>{formatCurrency(analysis.futurePrediction.targetLow)}</span><span>{formatCurrency(analysis.futurePrediction.targetHigh)}</span></div></div>
+                            )}
+                        </div>
+                     </div>
+                </div>
+            )}
+
+            {/* 6. RED TEAM CRITIC */}
+            {analysis.redTeaming && (
+                <div>
+                     <div className="flex items-center justify-between mb-2 px-1">
+                         <div className="flex items-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-widest">
+                            <ShieldAlert className="w-3 h-3" /> 红队对抗演练 (Critic Protocol)
+                         </div>
+                         <RadialProgress score={analysis.modelFusionConfidence} size={28} strokeWidth={3} />
+                     </div>
+                     <CriticTerminal redTeam={analysis.redTeaming} />
+                </div>
+            )}
+
         </div>
 
         <button onClick={onAnalyze} disabled={loading} className="mt-4 w-full py-3 bg-white hover:bg-gray-200 border border-transparent disabled:opacity-50 text-black text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]"><RefreshCcwIcon className="w-4 h-4" /> 重启深度分析</button>
