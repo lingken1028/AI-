@@ -258,11 +258,11 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         }
     }
 
-    // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL
+    // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL WITH ZERO VARIANCE
     const systemPrompt = `
       You are **TradeGuard Pro**, an elite institutional trading AI.
       
-      **MISSION**: Zero Variance. Rigorous Deduction. No Hallucinations.
+      **CORE DIRECTIVE**: Zero Variance. Rigorous Deduction. Deterministic Analysis.
       **LANGUAGE**: All analysis content MUST be in **SIMPLIFIED CHINESE (简体中文)**.
       
       ${marketSpecificProtocol}
@@ -270,29 +270,24 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       **METHODOLOGY: THE TRINITY CONSENSUS PROTOCOL (三位一体共识协议)**
       
       1.  **THE QUANT (量化派)**: 
-          - A-Share: Main Force Net Inflow, Limit Up statistics.
-          - US/Crypto: RSI, Pivot Points, Fibonacci, Options OI.
+          - Calculate RSI, MACD, and Fib Levels precisely.
       2.  **THE SMART MONEY (资金派)**: 
-          - A-Share: Dragon & Tiger List (龙虎榜), Northbound Flows.
-          - US/Crypto: Net Inflow, Order Blocks, Whale Alerts.
-      3.  **THE CHARTIST (结构派)**: 
-          - **IF IMAGE PROVIDED**: The image is Ground Truth. Score based on visual patterns (e.g., "Bearish Engulfing").
-          - **IF NO IMAGE (DEEP MINING MODE)**: The Chartist must RECONSTRUCT the structure from search text data. 
-            - Look for keywords like "breaking above 50 EMA", "forming lower lows".
-            - **TRIANGULATION**: Compare multiple search results. If Source A says "Bullish" and Source B says "Bearish", the Chartist score MUST be NEUTRAL (50).
+          - Analyze Volume, Flow, and Institutional intent.
+      3.  **THE CHARTIST (结构派 - VISION FIRST)**: 
+          - **VISUAL ANCHOR PROTOCOL (CRITICAL)**: 
+            - If an Image is provided, you MUST READ THE Y-AXIS LABELS and extract exact price levels.
+            - Do not guess "support is nearby". Say "Support is strictly at 152.4 based on the image".
+            - **CONSISTENCY RULE**: If Visual Structure (e.g., Bearish Engulfing) CONFLICTS with News Sentiment (e.g., Bullish Earnings), **VISUALS WIN** for short-term scoring. This prevents "Bull Trap" losses.
 
-      **LOGIC SUTURE (EXECUTION CHAIN)**:
+      **EXECUTION CHAIN**:
       
-      1.  **DATA INGESTION**:
-          - IF IMAGE: 'visualAnalysis' is key.
-          - IF NO IMAGE: Generate 'dataMining' field. List specific data points found in text. 
+      1.  **PIXEL-LEVEL EXTRACTION**:
+          - IF IMAGE: Fill 'visualKeyLevels' with precise numbers read from the chart.
+          - IF NO IMAGE: Fill 'dataMining' with numbers from search text.
 
       2.  **CONSISTENCY CHECK**:
-          - If 'dataMining' shows contradictory data (e.g. Price < EMA but News is Good), the 'trinityConsensus.consensusVerdict' must be 'DIVERGENCE'.
-          - The 'winRate' must be penalized if data is contradictory.
-      
-      3.  **ARCHITECT BLUEPRINT**:
-          - 'tradingSetup' must use the specific levels found in search (for No Image) or seen in the chart (for Image).
+          - If 'visualKeyLevels' shows resistance at 100, but 'tradingSetup' suggests entry at 101, STOP. Correct the setup to respect the visual resistance.
+          - Your analysis must be reproducible. With the same image/data, you must output the exact same levels.
       
       Current Context:
       - Asset: ${symbol} (${currentPrice})
@@ -313,12 +308,18 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             "chartPatternScore": number,
             "consensusVerdict": "STRONG_CONFLUENCE (强共振)" | "MODERATE (一般)" | "DIVERGENCE (背离)"
         },
-        "visualAnalysis": "string (If Image provided. Else null)",
+        "visualAnalysis": "string (Detailed visual description. If Image provided. Else null)",
+        "visualKeyLevels": {
+            "detectedSupport": number,
+            "detectedResistance": number,
+            "patternName": "string (e.g. Double Top)",
+            "candlePattern": "string (e.g. Long Upper Wick)"
+        },
         "dataMining": {
             "sourcesCount": number,
             "confidenceLevel": "High" | "Medium" | "Low",
-            "keyDataPoints": ["string (e.g. 'RSI Divergence on Daily', 'Support at 100')"],
-            "contradictions": ["string (e.g. 'Price rising but Volume falling')"],
+            "keyDataPoints": ["string"],
+            "contradictions": ["string"],
             "primaryTrendSource": "string"
         },
         "winRate": number, 
@@ -330,7 +331,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string (Explain the logic. If No Image, explain how you Triangulated the data)",
+        "reasoning": "string",
         "volatilityAssessment": "string",
         "strategyMatch": "string",
         "marketStructure": "string",
@@ -373,20 +374,18 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       Execute Trinity Consensus Protocol for ${symbol} on ${timeframe}.
       ${searchInstructions}
       
-      ${imageBase64 ? `**VISION MODE ENGAGED**: 
-      1. SCAN THE CHART IMAGE as Ground Truth.
-      2. 'visualAnalysis' is MANDATORY. 
+      ${imageBase64 ? `**VISION MODE ENGAGED (PRIORITY: HIGH)**: 
+      1. SCAN THE CHART IMAGE.
+      2. EXTRACT PIXEL-PERFECT LEVELS: Look at the Y-axis numbers. Support/Resistance MUST match the visual grid lines.
+      3. 'visualKeyLevels' is MANDATORY. 
+      4. IF Vision indicates a specific pattern (e.g. Head & Shoulders), you MUST structure your trade around it, ignoring conflicting news.
       ` : `**DEEP MINING MODE (NO IMAGE)**: 
-      1. You are BLIND to the chart. You MUST rely on SEARCH RESULTS to reconstruct the structure.
-      2. TRIANGULATE: Verify support/resistance levels from at least 2 search snippets.
-      3. 'dataMining' field is MANDATORY. Fill 'keyDataPoints' with exact numbers found in text.
-      4. If data is scarce, lower the 'confidence' and 'winRate'.
+      1. Use Search to reconstruct the chart in your mind.
+      2. TRIANGULATE data points to ensure accuracy.
+      3. 'dataMining' is MANDATORY.
       `}
       
-      MANDATORY: 
-      1. Calculate Fibonacci levels based on recent high/low found in search/price.
-      2. 'tradingSetup' must be a logical consequence of the evidence.
-      3. LANGUAGE: Simplified Chinese.
+      Consistency Check: If you run this analysis 5 times on the same data, the result must be identical. Do not hallucinate.
       
       Reference Price: ${currentPrice}
     `;
@@ -397,8 +396,8 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
-          temperature: 0.0, 
-          topK: 1, 
+          temperature: 0.0, // STRICT ZERO for consistency
+          topK: 1, // STRICT 1 to remove randomness
           topP: 0.95
       }
     };
@@ -444,6 +443,15 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             if (!imageBase64 && data.dataMining && data.dataMining.confidenceLevel === 'Low') {
                 calculatedWinRate -= 5;
             }
+
+            // Image Consistency Check (If Image detected specific Bearish pattern but score is high, penalty)
+            if (imageBase64 && data.visualKeyLevels) {
+                const pattern = (data.visualKeyLevels.patternName || "").toLowerCase();
+                if ((pattern.includes("top") || pattern.includes("bear")) && calculatedWinRate > 60) {
+                    calculatedWinRate = 55; // Force neutralization for contradiction
+                    data.reasoning += " [VISION OVERRIDE: Bearish pattern detected visually, adjusted score downward for safety.]";
+                }
+            }
             
             data.winRate = Math.max(0, Math.min(100, calculatedWinRate));
         }
@@ -458,6 +466,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'].forEach(key => {
             data[key] = parsePrice(data[key]);
         });
+
+        // Ensure visual key levels are parsed
+        if (data.visualKeyLevels) {
+            data.visualKeyLevels.detectedSupport = parsePrice(data.visualKeyLevels.detectedSupport);
+            data.visualKeyLevels.detectedResistance = parsePrice(data.visualKeyLevels.detectedResistance);
+        }
         
         if (data.futurePrediction) {
             data.futurePrediction.targetHigh = parsePrice(data.futurePrediction.targetHigh);
@@ -512,7 +526,7 @@ export const performBacktest = async (symbol: string, strategy: BacktestStrategy
             model: 'gemini-3-pro-preview', 
             contents: prompt,
             config: {
-                temperature: 0.1, // LOW TEMP FOR CONSISTENCY
+                temperature: 0.0, // STRICT ZERO
                 tools: [{ googleSearch: {} }],
                 responseMimeType: "application/json"
             }

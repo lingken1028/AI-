@@ -124,6 +124,14 @@ export interface DataMining {
     primaryTrendSource: string; // "Technical Indicators" or "News Sentiment"
 }
 
+// NEW: Visual Key Levels (Extracted strictly from Image)
+export interface VisualKeyLevels {
+    detectedSupport: number;
+    detectedResistance: number;
+    patternName: string; // e.g. "Double Bottom", "Head and Shoulders"
+    candlePattern: string; // e.g. "Long Wick Rejection", "Marubozu"
+}
+
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
@@ -146,6 +154,8 @@ export interface AIAnalysis {
   
   // New Enhanced Fields
   visualAnalysis?: string; // If Image provided
+  visualKeyLevels?: VisualKeyLevels; // Structual data from image
+  
   dataMining?: DataMining; // If NO Image provided
   
   // NEW: Market Context to show specific logic (A-Share vs US)

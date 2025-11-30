@@ -1,9 +1,9 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining } from '../types';
+import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining, VisualKeyLevels } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark, LocateFixed } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -402,6 +402,48 @@ const DataMiningCard = ({ data }: { data: DataMining }) => {
     );
 };
 
+// NEW: Visual Analysis Card with Pixel Extraction
+const VisualAnalysisCard = ({ analysis, keyLevels }: { analysis: string, keyLevels?: VisualKeyLevels }) => {
+    return (
+        <div className="bg-indigo-900/10 rounded-xl p-4 border border-indigo-500/30 relative overflow-hidden group ml-1">
+             <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
+             <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Eye className="w-16 h-16 text-indigo-500"/></div>
+             
+             <div className="flex items-center justify-between mb-3 border-b border-indigo-500/20 pb-2">
+                 <div className="flex items-center gap-2">
+                    <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">PRIMARY SOURCE</span>
+                    <h3 className="text-indigo-400 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                        <ScanLine className="w-3 h-3" /> AI 视觉洞察 (Vision Insights)
+                    </h3>
+                 </div>
+                 {keyLevels && (
+                    <div className="text-[9px] text-indigo-300 font-bold uppercase border border-indigo-500/30 px-2 py-0.5 rounded bg-indigo-500/10">
+                        {keyLevels.patternName || "PATTERN DETECTED"}
+                    </div>
+                 )}
+             </div>
+
+            {/* Structured Key Levels */}
+            {keyLevels && (
+                <div className="grid grid-cols-2 gap-2 mb-3 bg-[#0b1215]/50 p-2 rounded border border-indigo-500/20">
+                    <div className="flex flex-col gap-1">
+                        <div className="text-[9px] text-gray-500 font-bold uppercase flex items-center gap-1"><ArrowUpRight className="w-2 h-2 text-indigo-400"/> VISUAL RESISTANCE</div>
+                        <div className="font-mono text-xs text-white font-bold tracking-wider">{formatCurrency(keyLevels.detectedResistance)}</div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div className="text-[9px] text-gray-500 font-bold uppercase flex items-center gap-1"><ArrowDownRight className="w-2 h-2 text-indigo-400"/> VISUAL SUPPORT</div>
+                        <div className="font-mono text-xs text-white font-bold tracking-wider">{formatCurrency(keyLevels.detectedSupport)}</div>
+                    </div>
+                </div>
+            )}
+
+            <div className="text-xs text-indigo-200/90 leading-relaxed font-light">
+                <Typewriter text={analysis} speed={3} />
+            </div>
+        </div>
+    );
+};
+
 const MarketBadge = ({ context }: { context: string }) => {
     let icon = <Globe className="w-3 h-3" />;
     let text = "GLOBAL";
@@ -701,19 +743,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     
                     {/* NEW: VISUAL OR DATA ANALYSIS CARD */}
                     {analysis.visualAnalysis ? (
-                        <div className="bg-indigo-900/10 rounded-xl p-4 border border-indigo-500/30 relative overflow-hidden group ml-1">
-                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
-                             <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Eye className="w-16 h-16 text-indigo-500"/></div>
-                             <div className="flex items-center gap-2 mb-2">
-                                <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">PRIMARY SOURCE</span>
-                                <h3 className="text-indigo-400 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
-                                    <ScanLine className="w-3 h-3" /> AI 视觉洞察 (Vision Insights)
-                                </h3>
-                             </div>
-                            <div className="text-xs text-indigo-200/90 leading-relaxed font-light">
-                                <Typewriter text={analysis.visualAnalysis} speed={5} />
-                            </div>
-                        </div>
+                        <VisualAnalysisCard analysis={analysis.visualAnalysis} keyLevels={analysis.visualKeyLevels} />
                     ) : analysis.dataMining ? (
                         /* DATA MINING DISPLAY IF NO IMAGE */
                         <DataMiningCard data={analysis.dataMining} />
