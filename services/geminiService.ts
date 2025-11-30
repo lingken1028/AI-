@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 import { STRATEGIES } from "../constants";
@@ -16,7 +15,7 @@ const initAI = () => {
 const parsePrice = (input: any): number => {
     if (typeof input === 'number') return input;
     if (typeof input === 'string') {
-        let clean = input.replace(/,/g, '');
+        let clean = input.replace(/,/g, '').replace(/[^\d.-]/g, '');
         const match = clean.match(/[-+]?[0-9]*\.?[0-9]+/);
         if (match) {
             const val = parseFloat(match[0]);
@@ -28,29 +27,52 @@ const parsePrice = (input: any): number => {
 
 // Helper: robust JSON parsing
 const cleanAndParseJSON = (text: string): any => {
-    let cleanedText = text.replace(/```[a-zA-Z0-9]*\n?/g, '').replace(/```/g, '').trim();
+    // 1. Aggressive Clean: Remove Markdown code blocks first
+    let cleanedText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    // 2. Locate the JSON object (Find first { and last })
     const firstBrace = cleanedText.indexOf('{');
     const lastBrace = cleanedText.lastIndexOf('}');
+    
     if (firstBrace !== -1 && lastBrace !== -1) {
         cleanedText = cleanedText.substring(firstBrace, lastBrace + 1);
+    } else {
+        // Fallback: try to find just the array if object not found
+        const firstBracket = cleanedText.indexOf('[');
+        const lastBracket = cleanedText.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket !== -1) {
+            cleanedText = cleanedText.substring(firstBracket, lastBracket + 1);
+        } else {
+            // If strictly no JSON found, throw specific error to trigger retry if needed
+             throw new Error("No JSON structure found in response");
+        }
     }
 
     try {
         return JSON.parse(cleanedText);
     } catch (e) {
-        console.warn("Initial JSON Parse Failed. Attempting repair...", e);
+        console.warn("Initial JSON Parse Failed. Attempting repairs...", e);
+        
+        // Repair Strategy 1: Remove trailing commas (Common LLM Error)
         try {
-            const fixedNewlines = cleanedText.replace(/(: ")([\s\S]*?)(?=")/g, (match, prefix, content) => {
-                return prefix + content.replace(/\n/g, "\\n");
-            });
-            return JSON.parse(fixedNewlines);
+            const noTrailingCommas = cleanedText.replace(/,(\s*[}\]])/g, '$1');
+            return JSON.parse(noTrailingCommas);
         } catch (e2) {
-             try {
-                const sanitized = cleanedText.replace(/[\n\r\t]/g, " ");
-                return JSON.parse(sanitized);
+             // Repair Strategy 2: Fix unescaped newlines in values
+            try {
+                const fixedNewlines = cleanedText.replace(/(: ")([\s\S]*?)(?=")/g, (match, prefix, content) => {
+                    return prefix + content.replace(/\n/g, "\\n");
+                });
+                return JSON.parse(fixedNewlines);
             } catch (e3) {
-                 console.error("Critical JSON Parse Error. Raw Text:", text);
-                 throw new Error("Invalid JSON structure returned by AI");
+                 // Repair Strategy 3: Aggressive sanitization (Last Resort)
+                 try {
+                    const sanitized = cleanedText.replace(/[\n\r\t]/g, " ");
+                    return JSON.parse(sanitized);
+                } catch (e4) {
+                     console.error("Critical JSON Parse Error. Raw Text:", text);
+                     throw new Error("Invalid JSON structure returned by AI");
+                }
             }
         }
     }
@@ -109,6 +131,7 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
           config: {
             temperature: 0.1, // LOW TEMP FOR CONSISTENCY
             tools: [{ googleSearch: {} }],
+            // NOTE: responseMimeType is NOT allowed with googleSearch
             safetySettings: [
               { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
               { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -173,7 +196,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
     const horizon = getPredictionHorizon(timeframe);
     
-    // --- 1. MARKET SEGMENTATION LOGIC (Identifying Big A vs US) ---
+    // --- 1. MARKET SEGMENTATION LOGIC ---
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE') || /^[0-9]{6}$/.test(symbol.split(':')[1] || '');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
     const isForex = symbol.startsWith('FX') || symbol.startsWith('OANDA');
@@ -184,130 +207,63 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     else if (isUSStock) marketContext = 'US_EQUITY';
     else if (isCrypto) marketContext = 'CRYPTO';
 
-    // DYNAMIC TIMEFRAME CONTEXT FOR SEARCH
+    // DYNAMIC TIMEFRAME CONTEXT
     const tfContext = timeframe === Timeframe.D1 ? "日线" : `${timeframe}级别`; 
-    const tfSearch = timeframe === Timeframe.D1 ? "daily chart" : `${timeframe} chart`;
-
-    let searchInstructions = "";
+    
+    // --- 2. SEARCH & PROMPT CONSTRUCTION ---
     let marketSpecificProtocol = "";
 
-    // 2. CONFIGURE SEARCH & PROTOCOL BASED ON MARKET TYPE
     if (isAShare) {
-        // A-SHARE LOGIC (Policy + Hot Money + T+1)
         marketSpecificProtocol = `
             **MARKET PROTOCOL: CHINA A-SHARES (CN_ASHARE)**
-            1.  **POLICY IS KING**: Prioritize government policies (Five-Year Plans, PBOC announcements, State Media tone).
-            2.  **FUNDS FLOW**: Focus on "Northbound Money" (北向资金) and "Main Force" (主力资金/游资).
-            3.  **RULES**: Strictly adhere to T+1 trading rules. Price Limits (10%/20%) are critical support/resistance.
-            4.  **CONCEPTS**: Identify "Concept Hype" (概念炒作) and Sector Rotation (板块轮动).
-            5.  **LANGUAGE**: Use terms like "Dragon Return" (龙头反包), "Limit Up" (涨停), "Wash" (洗盘).
+            1. POLICY: Prioritize Five-Year Plans/PBOC.
+            2. FUNDS: "Northbound Money" (北向) and "Main Force" (主力).
+            3. RULES: T+1, 10%/20% Limits.
+            4. TERMS: Use "Dragon Return" (龙头反包), "Limit Up" (涨停).
         `;
-        
-        if (!imageBase64) {
-             searchInstructions = `
-              DEEP MINING MODE (A-SHARE):
-              1. "东方财富 ${symbol} 主力资金流向 龙虎榜"
-              2. "同花顺 ${symbol} 概念板块 涨停原因"
-              3. "雪球 ${symbol} 深度研报 目标价"
-              4. "新浪财经 ${symbol} 重大利好利空消息"
-            `;
-        } else {
-             searchInstructions = `"${symbol} 主力资金流向", "${symbol} 最新研报", "${symbol} 概念题材"`;
-        }
-
     } else if (isCrypto) {
-        // CRYPTO LOGIC (24/7 + On-Chain)
          marketSpecificProtocol = `
             **MARKET PROTOCOL: CRYPTO ASSETS**
-            1.  **ON-CHAIN**: Liquidation Heatmaps, Open Interest (OI), Funding Rates.
-            2.  **MACRO**: Correlation with NASDAQ/Gold.
-            3.  **TECHNICALS**: High respect for Fibonacci and pure Price Action.
-            4.  **SENTIMENT**: Fear & Greed Index, Twitter/X trends.
+            1. DATA: Liquidation Heatmaps, Funding Rates, Open Interest.
+            2. TERMS: Use "Short Squeeze" (轧空), "Long Squeeze" (多杀多).
         `;
-         if (!imageBase64) {
-            searchInstructions = `
-              DEEP MINING MODE (CRYPTO):
-              1. "${symbol} liquidation heatmap levels order book depth"
-              2. "${symbol} funding rate open interest trend coinglass"
-              3. "${symbol} technical analysis rsi divergence macd"
-              4. "${symbol} crypto twitter sentiment news"
-            `;
-        } else {
-            searchInstructions = `"${symbol} technical analysis", "${symbol} funding rate open interest"`;
-        }
-
     } else {
-        // US/GLOBAL LOGIC (Institutional + Macro)
         marketSpecificProtocol = `
             **MARKET PROTOCOL: US EQUITIES/GLOBAL**
-            1.  **INSTITUTIONAL**: Dark Pools, VWAP deviations, Options Gamma Exposure (GEX).
-            2.  **MACRO**: Fed Policy (Hawkish/Dovish), Bond Yields, Earnings.
-            3.  **RULES**: T+0 trading allowed. Pre-market/After-hours liquidity matters.
-            4.  **STRUCTURE**: Respect Key Levels, Supply/Demand Zones, SMC (Smart Money Concepts).
+            1. DATA: Dark Pools, Options Gamma, Fed Policy.
+            2. TERMS: Use "Gamma Squeeze", "Institutional Accumulation".
         `;
-        if (!imageBase64) {
-            searchInstructions = `
-              DEEP MINING MODE (US/GLOBAL):
-              1. "${symbol} technical analysis pivot points fibonacci levels today"
-              2. "${symbol} option chain max pain put call ratio"
-              3. "${symbol} institutional ownership change recent filings"
-              4. "${symbol} analyst price targets consensus strong buy sell"
-            `;
-        } else {
-            searchInstructions = `"${symbol} technical analysis", "${symbol} institutional flow", "${symbol} options sentiment"`;
-        }
     }
 
-    // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL WITH ZERO VARIANCE
     const systemPrompt = `
       You are **TradeGuard Pro**, an elite institutional trading AI.
       
       **CORE DIRECTIVE**: Zero Variance. Rigorous Deduction. Deterministic Analysis.
-      **LANGUAGE**: All analysis content MUST be in **SIMPLIFIED CHINESE (简体中文)**.
+      **OUTPUT FORMAT**: RAW JSON ONLY. NO MARKDOWN. NO EXPLANATORY TEXT.
+      
+      **LANGUAGE PROTOCOL (CRITICAL)**:
+      1. ALL OUTPUT TEXT MUST BE IN **SIMPLIFIED CHINESE (简体中文)**.
+      2. TRANSLATE ALL English financial terms from Search Results into Chinese.
+         - Example: "Bullish Engulfing" -> "看涨吞没"
+         - Example: "Entry Strategy" -> "回踩支撑做多" (NOT "Pullback Buy")
       
       ${marketSpecificProtocol}
       
       **PRICE HANDLING RULE (CRITICAL)**:
       ${isLockedPrice 
-        ? `>>> USER HAS MANUALLY LOCKED THE PRICE AT ${currentPrice}. <<< 
-           You MUST accept ${currentPrice} as the ABSOLUTE TRUTH. 
-           DO NOT update this price based on Google Search results. 
-           ALL Calculations (Take Profit, Stop Loss, Support, Resistance) MUST be relative to exactly ${currentPrice}.
-           In the output JSON, 'realTimePrice' MUST be exactly ${currentPrice}.` 
-        : `Use ${currentPrice} as a reference. If Google Search reveals a more recent price, USE THE NEW PRICE for all calculations and update 'realTimePrice' in the JSON.`
+        ? `>>> USER LOCKED PRICE AT ${currentPrice}. DO NOT UPDATE IT. All levels (TP/SL) must be calculated relative to ${currentPrice}.` 
+        : `Use ${currentPrice} as reference. If Google Search shows a newer price, USE THE NEW PRICE and update 'realTimePrice'.`
       }
       
-      **METHODOLOGY: THE TRINITY CONSENSUS PROTOCOL (三位一体共识协议)**
+      **LOGIC CONSTRAINTS (STRICT)**:
+      1. **SCENARIO DEDUCTION**:
+         - "Bullish Target" MUST be > "realTimePrice".
+         - "Bearish Target" MUST be < "realTimePrice".
+         - Probabilities (Bull + Bear + Neutral) MUST sum to exactly 100.
+      2. **TRINITY CONSENSUS**:
+         - If Visuals say Bearish but News says Bullish -> Verdict is "DIVERGENCE (背离)".
       
-      1.  **THE QUANT (量化派)**: 
-          - Calculate RSI, MACD, and Fib Levels precisely based on the Price Rule above.
-      2.  **THE SMART MONEY (资金派)**: 
-          - Analyze Volume, Flow, and Institutional intent.
-      3.  **THE CHARTIST (结构派 - VISION/MINING)**: 
-          - **IF IMAGE PROVIDED (VISUAL ANCHOR PROTOCOL)**: 
-            - You MUST READ THE Y-AXIS LABELS and extract exact price levels.
-            - Do not guess "support is nearby". Say "Support is strictly at 152.4 based on the image".
-            - **CONSISTENCY RULE**: If Visual Structure (e.g., Bearish Engulfing) CONFLICTS with News Sentiment (e.g., Bullish Earnings), **VISUALS WIN** for short-term scoring. This prevents "Bull Trap" losses.
-          - **IF NO IMAGE (DATA TRIANGULATION)**:
-            - You MUST compare data from at least 3 search sources to find the common trend.
-            - If Source A says Bullish and Source B says Bearish, Verdict is "Neutral/Divergence". Do not guess.
-
-      **EXECUTION CHAIN**:
-      
-      1.  **PIXEL-LEVEL EXTRACTION**:
-          - IF IMAGE: Fill 'visualKeyLevels' with precise numbers read from the chart.
-          - IF NO IMAGE: Fill 'dataMining' with numbers from search text.
-
-      2.  **CONSISTENCY CHECK**:
-          - If 'visualKeyLevels' shows resistance at 100, but 'tradingSetup' suggests entry at 101, STOP. Correct the setup to respect the visual resistance.
-          - Your analysis must be reproducible. With the same image/data, you must output the exact same levels.
-      
-      Current Context:
-      - Asset: ${symbol} (${currentPrice})
-      - Timeframe: ${timeframe}
-      - Market Context: ${marketContext}
-      
-      Output JSON Schema (Strictly maintain Chinese strings):
+      Output JSON Schema (Maintain strict Chinese strings):
       {
         "signal": "BUY" | "SELL" | "NEUTRAL",
         "marketContext": "${marketContext}",
@@ -321,86 +277,72 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             "chartPatternScore": number,
             "consensusVerdict": "STRONG_CONFLUENCE (强共振)" | "MODERATE (一般)" | "DIVERGENCE (背离)"
         },
-        "visualAnalysis": "string (Detailed visual description. If Image provided. Else null)",
+        "visualAnalysis": "string (Chinese)",
         "visualKeyLevels": {
             "detectedSupport": number,
             "detectedResistance": number,
-            "patternName": "string (e.g. Double Top)",
-            "candlePattern": "string (e.g. Long Upper Wick)"
+            "patternName": "string (Chinese)"
         },
         "dataMining": {
             "sourcesCount": number,
             "confidenceLevel": "High" | "Medium" | "Low",
-            "keyDataPoints": ["string"],
-            "contradictions": ["string"],
-            "primaryTrendSource": "string"
+            "keyDataPoints": ["string (Chinese)"],
+            "contradictions": ["string (Chinese)"]
         },
         "winRate": number, 
         "historicalWinRate": number, 
         "entryPrice": number,
-        "entryStrategy": "string (Short Name)",
+        "entryStrategy": "string (Short Chinese Phrase e.g. 突破回踩)",
         "takeProfit": number,
         "stopLoss": number,
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string",
-        "volatilityAssessment": "string",
-        "strategyMatch": "string",
-        "marketStructure": "string",
+        "reasoning": "string (Chinese)",
+        "volatilityAssessment": "string (Chinese)",
+        "marketStructure": "string (Chinese e.g. 多头排列)",
         "technicalIndicators": {
-            "rsi": number, "macdStatus": "string", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
+            "rsi": number, "macdStatus": "string (Chinese)", "volumeStatus": "string (Chinese)"
         },
         "institutionalData": {
-            "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string"
+            "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string (Chinese)"
         },
         "smartMoneyAnalysis": {
             "retailSentiment": "Fear" | "Greed" | "Neutral",
-            "smartMoneyAction": "string",
-            "orderBlockStatus": "string"
+            "smartMoneyAction": "string (Chinese)",
+            "orderBlockStatus": "string (Chinese)"
         },
         "scenarios": {
-            "bullish: { "probability": number, "targetPrice": number, "description": "string" },
-            "bearish": { "probability": number, "targetPrice": number, "description": "string" },
-            "neutral": { "probability": number, "targetPrice": number, "description": "string" }
+            "bullish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
+            "bearish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
+            "neutral": { "probability": number, "targetPrice": number, "description": "string (Chinese)" }
         },
         "tradingSetup": {
-            "strategyIdentity": "string",
-            "confirmationTriggers": ["string"],
-            "invalidationPoint": "string"
+            "strategyIdentity": "string (Chinese)",
+            "confirmationTriggers": ["string (Chinese)"],
+            "invalidationPoint": "string (Chinese)"
         },
         "redTeaming": {
-            "risks": ["string"],
-            "mitigations": ["string"],
+            "risks": ["string (Chinese)"],
+            "mitigations": ["string (Chinese)"],
             "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-            "stressTest": "string"
+            "stressTest": "string (Chinese)"
         },
         "modelFusionConfidence": number, 
-        "guruInsights": [],
         "futurePrediction": {
-             "targetHigh": number, "targetLow": number, "confidence": number, "predictionPeriod": "${horizon}"
+             "targetHigh": number, "targetLow": number, "confidence": number
         }
       }
     `;
 
     const userPromptText = `
-      Execute Trinity Consensus Protocol for ${symbol} on ${timeframe}.
-      ${searchInstructions}
+      Analyze ${symbol} on ${timeframe}. Reference Price: ${currentPrice}.
+      ${imageBase64 ? "Use the provided CHART IMAGE for key levels." : "Use Google Search to reconstruct the chart."}
       
-      ${imageBase64 ? `**VISION MODE ENGAGED (PRIORITY: HIGH)**: 
-      1. SCAN THE CHART IMAGE.
-      2. EXTRACT PIXEL-PERFECT LEVELS: Look at the Y-axis numbers. Support/Resistance MUST match the visual grid lines.
-      3. 'visualKeyLevels' is MANDATORY. 
-      4. IF Vision indicates a specific pattern (e.g. Head & Shoulders), you MUST structure your trade around it, ignoring conflicting news.
-      ` : `**DEEP MINING MODE (NO IMAGE)**: 
-      1. Use Search to reconstruct the chart in your mind.
-      2. TRIANGULATE data points to ensure accuracy.
-      3. 'dataMining' is MANDATORY.
-      `}
-      
-      Consistency Check: If you run this analysis 5 times on the same data, the result must be identical. Do not hallucinate.
-      
-      Reference Price: ${currentPrice} ${isLockedPrice ? '(LOCKED - ABSOLUTE)' : ''}
+      CRITICAL:
+      1. Return RAW JSON ONLY. No markdown ticks.
+      2. Ensure "entryStrategy" is in CHINESE.
+      3. Verify "Bullish Target" > Price and "Bearish Target" < Price.
     `;
 
     const requestContents: any = {
@@ -408,10 +350,9 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       config: {
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          temperature: 0.0, // STRICT ZERO for consistency
-          topK: 1, // STRICT 1 to remove randomness
-          topP: 0.95
+          // NOTE: responseMimeType is NOT allowed with googleSearch
+          temperature: 0.1, 
+          topK: 1
       }
     };
 
@@ -434,68 +375,79 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
         const data = cleanAndParseJSON(result.text);
 
-        // Safety Data Validation & Repair
-        const baseScore = data.winRate || 50;
-        if (!data.scoreDrivers) {
-            data.scoreDrivers = { technical: baseScore, institutional: baseScore, sentiment: baseScore, macro: baseScore };
-        }
+        // --- THE SANITIZER: Strict Logic & Type Enforcement ---
         
-        // --- RIGOROUS CONSISTENCY ENFORCEMENT ---
+        // 1. Defaults
+        const baseScore = data.winRate || 50;
+        if (!data.scoreDrivers) data.scoreDrivers = { technical: baseScore, institutional: baseScore, sentiment: baseScore, macro: baseScore };
+        
+        // 2. Number Parsing
+        ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'].forEach(key => {
+            data[key] = parsePrice(data[key]);
+        });
+        
+        // 3. Scenario Logic Correction
+        if (data.scenarios) {
+            const { bullish, bearish, neutral } = data.scenarios;
+            const currentP = data.realTimePrice || currentPrice;
+            
+            bullish.targetPrice = parsePrice(bullish.targetPrice);
+            bearish.targetPrice = parsePrice(bearish.targetPrice);
+            neutral.targetPrice = parsePrice(neutral.targetPrice);
+            
+            // Auto-Fix Inverted Targets
+            if (bullish.targetPrice < currentP && bearish.targetPrice > currentP) {
+                // Swap them if AI got confused
+                const temp = bullish.targetPrice;
+                bullish.targetPrice = bearish.targetPrice;
+                bearish.targetPrice = temp;
+            }
+            
+            // Hard Constraints
+            if (bullish.targetPrice <= currentP) bullish.targetPrice = currentP * 1.025; // Force +2.5%
+            if (bearish.targetPrice >= currentP) bearish.targetPrice = currentP * 0.975; // Force -2.5%
+            
+            // Probability Normalization
+            const bProb = bullish.probability || 0;
+            const beProb = bearish.probability || 0;
+            const nProb = neutral.probability || 0;
+            const total = bProb + beProb + nProb;
+            
+            if (total !== 100) {
+                if (total === 0) {
+                     bullish.probability = 33; bearish.probability = 33; neutral.probability = 34;
+                } else {
+                     // Normalize preserving ratios
+                     bullish.probability = Math.round((bProb / total) * 100);
+                     bearish.probability = Math.round((beProb / total) * 100);
+                     neutral.probability = 100 - bullish.probability - bearish.probability;
+                }
+            }
+        }
+
+        // 4. Trinity Consensus Logic
         if (data.trinityConsensus) {
             const { quantScore, smartMoneyScore, chartPatternScore } = data.trinityConsensus;
-            // Weighted Average
             let calculatedWinRate = Math.round((quantScore * 0.35) + (smartMoneyScore * 0.35) + (chartPatternScore * 0.3));
             
-            // Divergence Penalty
+            // Penalties
             if (Math.abs(quantScore - smartMoneyScore) > 30) {
                  calculatedWinRate -= 10;
                  data.trinityConsensus.consensusVerdict = 'DIVERGENCE (背离)';
             }
-            
-            // Text-Mode specific penalty if confidence is low
-            if (!imageBase64 && data.dataMining && data.dataMining.confidenceLevel === 'Low') {
-                calculatedWinRate -= 5;
-            }
-
-            // Image Consistency Check (If Image detected specific Bearish pattern but score is high, penalty)
             if (imageBase64 && data.visualKeyLevels) {
                 const pattern = (data.visualKeyLevels.patternName || "").toLowerCase();
                 if ((pattern.includes("top") || pattern.includes("bear")) && calculatedWinRate > 60) {
-                    calculatedWinRate = 55; // Force neutralization for contradiction
-                    data.reasoning += " [VISION OVERRIDE: Bearish pattern detected visually, adjusted score downward for safety.]";
+                    calculatedWinRate = 55; // Vision Override
                 }
             }
-            
             data.winRate = Math.max(0, Math.min(100, calculatedWinRate));
         }
 
-        // Ensure Signal Matches Win Rate
+        // 5. Signal Sync
         if (data.winRate >= 60) data.signal = SignalType.BUY;
         else if (data.winRate <= 40) data.signal = SignalType.SELL;
         else data.signal = SignalType.NEUTRAL;
-        // ----------------------------------------------------
-
-        // Parsing numbers
-        ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'].forEach(key => {
-            data[key] = parsePrice(data[key]);
-        });
-
-        // Ensure visual key levels are parsed
-        if (data.visualKeyLevels) {
-            data.visualKeyLevels.detectedSupport = parsePrice(data.visualKeyLevels.detectedSupport);
-            data.visualKeyLevels.detectedResistance = parsePrice(data.visualKeyLevels.detectedResistance);
-        }
-        
-        if (data.futurePrediction) {
-            data.futurePrediction.targetHigh = parsePrice(data.futurePrediction.targetHigh);
-            data.futurePrediction.targetLow = parsePrice(data.futurePrediction.targetLow);
-        }
-        
-        if (data.scenarios) {
-            data.scenarios.bullish.targetPrice = parsePrice(data.scenarios.bullish.targetPrice);
-            data.scenarios.bearish.targetPrice = parsePrice(data.scenarios.bearish.targetPrice);
-            data.scenarios.neutral.targetPrice = parsePrice(data.scenarios.neutral.targetPrice);
-        }
 
         return data as RealTimeAnalysis;
 
@@ -513,13 +465,12 @@ export const performBacktest = async (symbol: string, strategy: BacktestStrategy
         Perform a simulated historical backtest for ${symbol} using the PROFESSIONAL STRATEGY: "${strategy}".
         Time Period: ${period}.
         
-        Task:
-        1. Search for historical price action and volatility for ${symbol} over this period.
-        2. CHECK STRATEGY RULES: Look for specific setups defined by ${strategy}.
-        3. Simulate trades based on these strict rules.
-        4. ALL Text description MUST be in Chinese (Simplified).
+        Instructions:
+        1. Search for historical price action.
+        2. Simulate trades based on strict strategy rules.
+        3. OUTPUT LANGUAGE: SIMPLIFIED CHINESE (简体中文).
         
-        Return JSON:
+        Return JSON ONLY:
         {
           "strategyName": "${strategy}",
           "period": "${period}",
@@ -539,9 +490,8 @@ export const performBacktest = async (symbol: string, strategy: BacktestStrategy
             model: 'gemini-3-pro-preview', 
             contents: prompt,
             config: {
-                temperature: 0.0, // STRICT ZERO
-                tools: [{ googleSearch: {} }],
-                responseMimeType: "application/json"
+                temperature: 0.0, 
+                tools: [{ googleSearch: {} }]
             }
         });
 

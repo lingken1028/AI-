@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity, Clock, Menu, Search, TrendingUp, TrendingDown, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, Navigation, Target, ShieldAlert, Layers, Lock, Unlock, HelpCircle, Camera, Image as ImageIcon } from 'lucide-react';
 import StockChart from './components/StockChart';
@@ -173,13 +172,11 @@ const App: React.FC = () => {
       }
 
       // Step 1: Analyze using the anchor price AND image if available
-      // PASS isPriceManuallySet to trigger STRICT PROMPT MODE
       const result: RealTimeAnalysis = await analyzeMarketData(
           selectedSymbol.symbol, 
           selectedTimeframe, 
           analysisAnchorPrice,
-          selectedImage || undefined,
-          isPriceManuallySet // <--- New Flag passed to service
+          selectedImage || undefined // Pass image to service
       );
       
       setAnalysis(result);

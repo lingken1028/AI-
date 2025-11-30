@@ -115,21 +115,13 @@ export interface TrendResonance {
     resonance: 'Resonant (顺势)' | 'Conflict (逆势/回调)' | 'Chaos (震荡)';
 }
 
-// NEW: Data Mining for Text-Only Mode (The "Blind" Logic Enhancement)
+// NEW: Data Mining for Text-Only Mode
 export interface DataMining {
     sourcesCount: number;
     confidenceLevel: 'High' | 'Medium' | 'Low';
     keyDataPoints: string[]; // e.g., "Fib 0.618 at 150.2", "Options Max Pain 155"
     contradictions: string[]; // e.g., "News bullish but Volume dropping"
     primaryTrendSource: string; // "Technical Indicators" or "News Sentiment"
-}
-
-// NEW: Visual Key Levels (Extracted strictly from Image Pixels)
-export interface VisualKeyLevels {
-    detectedSupport: number;
-    detectedResistance: number;
-    patternName: string; // e.g. "Double Bottom", "Head and Shoulders"
-    candlePattern: string; // e.g. "Long Wick Rejection", "Marubozu"
 }
 
 export interface AIAnalysis {
@@ -154,8 +146,6 @@ export interface AIAnalysis {
   
   // New Enhanced Fields
   visualAnalysis?: string; // If Image provided
-  visualKeyLevels?: VisualKeyLevels; // Structual data from image
-  
   dataMining?: DataMining; // If NO Image provided
   
   // NEW: Market Context to show specific logic (A-Share vs US)
