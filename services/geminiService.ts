@@ -93,9 +93,9 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
         2. Use Google Search to find the official trading ticker.
         3. Return the symbol in standard TradingView format (EXCHANGE:TICKER).
            Mapping Rules:
-           - 6 digits starting '6' -> "SSE:xxxxxx".
-           - 6 digits starting '0'/'3' -> "SZSE:xxxxxx".
-           - Yahoo ".SS" -> "SSE:xxxxxx", ".SZ" -> "SZSE:xxxxxx".
+           - 6 digits starting '6' -> "SSE:xxxxxx" (Shanghai).
+           - 6 digits starting '0'/'3' -> "SZSE:xxxxxx" (Shenzhen).
+           - HK stocks -> "HKEX:xxxx".
            - Bitcoin/Crypto -> "BINANCE:BTCUSDT" format.
            - Gold/Forex -> "OANDA:XAUUSD" or "FX:EURUSD".
         4. Return full name and price.
@@ -167,13 +167,13 @@ const getPredictionHorizon = (tf: Timeframe): string => {
   }
 };
 
-export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, currentPrice: number, imageBase64?: string): Promise<RealTimeAnalysis> => {
+export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, currentPrice: number, imageBase64?: string, isLockedPrice: boolean = false): Promise<RealTimeAnalysis> => {
     const ai = initAI();
     if (!ai) throw new Error("API Key not configured");
 
     const horizon = getPredictionHorizon(timeframe);
     
-    // --- MARKET SEGMENTATION LOGIC ---
+    // --- 1. MARKET SEGMENTATION LOGIC (Identifying Big A vs US) ---
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE') || /^[0-9]{6}$/.test(symbol.split(':')[1] || '');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
     const isForex = symbol.startsWith('FX') || symbol.startsWith('OANDA');
@@ -191,7 +191,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     let searchInstructions = "";
     let marketSpecificProtocol = "";
 
-    // 1. CONFIGURE SEARCH & PROTOCOL BASED ON MARKET TYPE
+    // 2. CONFIGURE SEARCH & PROTOCOL BASED ON MARKET TYPE
     if (isAShare) {
         // A-SHARE LOGIC (Policy + Hot Money + T+1)
         marketSpecificProtocol = `
@@ -267,17 +267,30 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       
       ${marketSpecificProtocol}
       
+      **PRICE HANDLING RULE (CRITICAL)**:
+      ${isLockedPrice 
+        ? `>>> USER HAS MANUALLY LOCKED THE PRICE AT ${currentPrice}. <<< 
+           You MUST accept ${currentPrice} as the ABSOLUTE TRUTH. 
+           DO NOT update this price based on Google Search results. 
+           ALL Calculations (Take Profit, Stop Loss, Support, Resistance) MUST be relative to exactly ${currentPrice}.
+           In the output JSON, 'realTimePrice' MUST be exactly ${currentPrice}.` 
+        : `Use ${currentPrice} as a reference. If Google Search reveals a more recent price, USE THE NEW PRICE for all calculations and update 'realTimePrice' in the JSON.`
+      }
+      
       **METHODOLOGY: THE TRINITY CONSENSUS PROTOCOL (三位一体共识协议)**
       
       1.  **THE QUANT (量化派)**: 
-          - Calculate RSI, MACD, and Fib Levels precisely.
+          - Calculate RSI, MACD, and Fib Levels precisely based on the Price Rule above.
       2.  **THE SMART MONEY (资金派)**: 
           - Analyze Volume, Flow, and Institutional intent.
-      3.  **THE CHARTIST (结构派 - VISION FIRST)**: 
-          - **VISUAL ANCHOR PROTOCOL (CRITICAL)**: 
-            - If an Image is provided, you MUST READ THE Y-AXIS LABELS and extract exact price levels.
+      3.  **THE CHARTIST (结构派 - VISION/MINING)**: 
+          - **IF IMAGE PROVIDED (VISUAL ANCHOR PROTOCOL)**: 
+            - You MUST READ THE Y-AXIS LABELS and extract exact price levels.
             - Do not guess "support is nearby". Say "Support is strictly at 152.4 based on the image".
             - **CONSISTENCY RULE**: If Visual Structure (e.g., Bearish Engulfing) CONFLICTS with News Sentiment (e.g., Bullish Earnings), **VISUALS WIN** for short-term scoring. This prevents "Bull Trap" losses.
+          - **IF NO IMAGE (DATA TRIANGULATION)**:
+            - You MUST compare data from at least 3 search sources to find the common trend.
+            - If Source A says Bullish and Source B says Bearish, Verdict is "Neutral/Divergence". Do not guess.
 
       **EXECUTION CHAIN**:
       
@@ -387,7 +400,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       
       Consistency Check: If you run this analysis 5 times on the same data, the result must be identical. Do not hallucinate.
       
-      Reference Price: ${currentPrice}
+      Reference Price: ${currentPrice} ${isLockedPrice ? '(LOCKED - ABSOLUTE)' : ''}
     `;
 
     const requestContents: any = {

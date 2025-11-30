@@ -115,7 +115,7 @@ export interface TrendResonance {
     resonance: 'Resonant (顺势)' | 'Conflict (逆势/回调)' | 'Chaos (震荡)';
 }
 
-// NEW: Data Mining for Text-Only Mode
+// NEW: Data Mining for Text-Only Mode (The "Blind" Logic Enhancement)
 export interface DataMining {
     sourcesCount: number;
     confidenceLevel: 'High' | 'Medium' | 'Low';
@@ -124,7 +124,7 @@ export interface DataMining {
     primaryTrendSource: string; // "Technical Indicators" or "News Sentiment"
 }
 
-// NEW: Visual Key Levels (Extracted strictly from Image)
+// NEW: Visual Key Levels (Extracted strictly from Image Pixels)
 export interface VisualKeyLevels {
     detectedSupport: number;
     detectedResistance: number;
