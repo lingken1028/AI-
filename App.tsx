@@ -46,6 +46,12 @@ const App: React.FC = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // FIX: Ref to track locked state for async operations to prevent race conditions
+  const isLockedRef = useRef(isPriceManuallySet);
+  useEffect(() => {
+    isLockedRef.current = isPriceManuallySet;
+  }, [isPriceManuallySet]);
+
   // 2. PERSISTENCE: Save to localStorage whenever watchlist changes
   useEffect(() => {
     localStorage.setItem('tradeGuard_watchlist', JSON.stringify(watchlist));
@@ -65,17 +71,25 @@ const App: React.FC = () => {
   // NEW: Silent Price Auto-Refresh Interval (Optimized to 15s for Live Feel)
   useEffect(() => {
     const intervalId = setInterval(() => {
-        if (!isPriceManuallySet && !isEditingPrice) {
+        // Use Ref for instant check to avoid closure staleness
+        if (!isLockedRef.current && !isEditingPrice) {
             refreshPriceSilent();
         }
     }, 15000); // 15 seconds
 
     return () => clearInterval(intervalId);
-  }, [selectedSymbol, isPriceManuallySet, isEditingPrice]);
+  }, [selectedSymbol, isEditingPrice]); // Removed isPriceManuallySet from deps as Ref handles it
 
   const refreshPriceSilent = async () => {
+      // Double check lock via Ref to prevent race conditions during async wait
+      if (isLockedRef.current) return;
+
       try {
           const freshData = await lookupStockSymbol(selectedSymbol.symbol);
+          
+          // Final check before applying state
+          if (isLockedRef.current) return;
+
           if (freshData && freshData.currentPrice > 0) {
               setCurrentPrice(freshData.currentPrice);
               setWatchlist(prev => prev.map(s => 
@@ -85,6 +99,20 @@ const App: React.FC = () => {
       } catch (e) {
           // Ignore silent errors
       }
+  };
+
+  const refreshPriceForce = async () => {
+    try {
+        const freshData = await lookupStockSymbol(selectedSymbol.symbol);
+        if (freshData && freshData.currentPrice > 0) {
+            setCurrentPrice(freshData.currentPrice);
+            setWatchlist(prev => prev.map(s => 
+                s.symbol === selectedSymbol.symbol ? { ...s, currentPrice: freshData.currentPrice } : s
+            ));
+        }
+    } catch (e) {
+        console.error("Force refresh failed", e);
+    }
   };
 
   // Function to handle stock selection with Auto-Refresh Price
@@ -152,13 +180,16 @@ const App: React.FC = () => {
 
     try {
       // Step 0: Logic for Price Source
-      if (isPriceManuallySet) {
+      // Use Ref to be safe
+      if (isLockedRef.current) {
           console.log("Using LOCKED price for analysis:", currentPrice);
           analysisAnchorPrice = currentPrice;
       } else {
           try {
              const freshData = await lookupStockSymbol(selectedSymbol.symbol);
-             if (freshData && freshData.currentPrice > 0) {
+             
+             // Check lock again after async fetch
+             if (!isLockedRef.current && freshData && freshData.currentPrice > 0) {
                  analysisAnchorPrice = freshData.currentPrice;
                  setCurrentPrice(analysisAnchorPrice); 
                  
@@ -176,13 +207,14 @@ const App: React.FC = () => {
           selectedSymbol.symbol, 
           selectedTimeframe, 
           analysisAnchorPrice,
-          selectedImage || undefined // Pass image to service
+          selectedImage || undefined, // Pass image to service
+          isLockedRef.current // <--- PASS LOCKED STATE to ensure AI respects the price
       );
       
       setAnalysis(result);
       
-      // ONLY update the display price from AI result if NOT locked
-      if (!isPriceManuallySet && result.realTimePrice) {
+      // ONLY update the display price from AI result if NOT locked (Check Ref)
+      if (!isLockedRef.current && result.realTimePrice) {
           setCurrentPrice(result.realTimePrice);
       }
       
@@ -194,7 +226,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice, isPriceManuallySet, selectedImage]);
+  }, [selectedSymbol.symbol, selectedTimeframe, currentPrice, selectedImage]);
 
   useEffect(() => {
     setAnalysis(null);
@@ -285,7 +317,7 @@ const App: React.FC = () => {
 
   const handleUnlockPrice = () => {
       setIsPriceManuallySet(false);
-      refreshPriceSilent(); // Trigger immediate refresh
+      refreshPriceForce(); // Trigger immediate refresh
   };
 
   const cancelEditPrice = () => {
@@ -553,7 +585,7 @@ const App: React.FC = () => {
                 <StockChart 
                     symbol={selectedSymbol.symbol} 
                     timeframe={selectedTimeframe} 
-                    onRefreshPrice={refreshPriceSilent} 
+                    onRefreshPrice={refreshPriceForce} 
                 />
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
