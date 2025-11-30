@@ -1,9 +1,9 @@
 
 
 import React, { useState, useEffect } from 'react';
-import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining } from '../types';
+import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining, CorrelationMatrix, CatalystRadar, TrendResonance, MarketTribunal, TribunalArgument, WyckoffData, VolumeProfile, SMCData, OptionsData, SentimentDivergence, VolatilityAnalysis } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark, Sparkles, Link2, CalendarClock, ArrowBigUp, ArrowBigDown, Gavel, Scale as ScaleIcon, ThumbsUp, ThumbsDown, AlertCircle, BarChart, Magnet, ZapOff, Waves, ArrowDown, Map } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -102,6 +102,449 @@ const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string,
     );
 };
 
+// NEW: Volatility Regime Card
+const VolatilityRegimeCard = ({ volatility }: { volatility?: VolatilityAnalysis }) => {
+    if (!volatility) return null;
+
+    const isHighVol = volatility.regime.includes('High') || volatility.regime.includes('Trend');
+    const isLowVol = volatility.regime.includes('Low') || volatility.regime.includes('Choppy');
+    const isExtreme = volatility.regime.includes('Extreme');
+
+    const regimeColor = isHighVol ? 'text-blue-400 border-blue-500/30' : isLowVol ? 'text-yellow-400 border-yellow-500/30' : 'text-red-400 border-red-500/30';
+    const bgEffect = isHighVol ? 'bg-blue-900/10' : isLowVol ? 'bg-yellow-900/10' : 'bg-red-900/10';
+
+    return (
+        <div className={`rounded-xl border p-4 mb-4 relative overflow-hidden ${bgEffect} ${regimeColor.replace('text-', 'border-')}`}>
+            <div className="flex justify-between items-start mb-3">
+                <h3 className="text-gray-500 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                    <Waves className="w-3 h-3" /> 波动率体制 (Volatility Regime)
+                </h3>
+                <span className={`text-[9px] px-2 py-0.5 rounded font-bold border ${regimeColor} bg-[#0b1215]/50`}>
+                    {volatility.regime}
+                </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                {/* ATR/VIX Status */}
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                        <Activity className="w-3 h-3" /> 
+                        <span>ATR/VIX: <span className="text-white font-bold">{volatility.atrState}</span></span>
+                    </div>
+                     {volatility.vixValue && (
+                        <div className="text-[9px] text-gray-500 font-mono bg-[#151c24] px-1.5 py-0.5 rounded w-fit">
+                            VIX: {volatility.vixValue}
+                        </div>
+                    )}
+                </div>
+
+                {/* Adaptive Strategy */}
+                <div className="text-right">
+                    <div className="text-[9px] text-gray-500 uppercase font-bold mb-1">自适应策略 (Adaptive Logic)</div>
+                    <div className={`text-xs font-bold ${isHighVol ? 'text-blue-300' : 'text-yellow-300'}`}>
+                        {volatility.adaptiveStrategy}
+                    </div>
+                </div>
+            </div>
+            
+            <div className="mt-3 pt-2 border-t border-gray-700/20 text-[10px] text-gray-300 leading-snug italic">
+                "{volatility.description}"
+            </div>
+        </div>
+    );
+};
+
+// NEW: Options Gamma Analysis Component
+const OptionsDashboard = ({ options, currentPrice }: { options?: OptionsData, currentPrice: number }) => {
+    if (!options || !options.maxPainPrice) return null;
+
+    const isAboveMaxPain = currentPrice > options.maxPainPrice;
+    const distance = Math.abs((currentPrice - options.maxPainPrice) / currentPrice) * 100;
+    const isSqueezeLikely = options.squeezeRisk === 'High';
+
+    return (
+        <div className="bg-[#0b1215] rounded-xl border border-gray-800 p-4 mb-4 relative overflow-hidden group">
+            <div className="absolute right-0 top-0 p-2 opacity-5"><ZapOff className="w-16 h-16 text-yellow-500" /></div>
+            
+            <div className="flex justify-between items-center mb-3 border-b border-gray-800 pb-2">
+                <h3 className="text-gray-500 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                    <Zap className="w-3 h-3 text-yellow-500" /> 期权衍生品 (Derivatives & Gamma)
+                </h3>
+                {isSqueezeLikely && (
+                    <span className="text-[9px] bg-red-500/20 text-red-400 border border-red-500/50 px-2 py-0.5 rounded font-bold animate-pulse">
+                        ⚠️ SQUEEZE RISK HIGH
+                    </span>
+                )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                {/* Max Pain Magnet */}
+                <div className="bg-[#151c24] p-3 rounded-lg border border-gray-800/50 relative">
+                    <div className="text-[9px] text-gray-500 font-bold uppercase mb-1">Max Pain (最大痛点)</div>
+                    <div className="flex items-baseline gap-2">
+                        <span className="text-lg font-mono font-bold text-white">{formatCurrency(options.maxPainPrice)}</span>
+                        <span className="text-[9px] text-gray-500">{distance.toFixed(1)}% 偏离</span>
+                    </div>
+                    {/* Visual Bar */}
+                    <div className="mt-2 h-1.5 bg-gray-700 rounded-full overflow-hidden relative">
+                         {/* Marker for Current Price */}
+                         <div className={`absolute top-0 bottom-0 w-1 ${currentPrice > options.maxPainPrice ? 'bg-green-500' : 'bg-red-500'} z-10`} style={{ left: isAboveMaxPain ? '70%' : '30%' }}></div>
+                         {/* Marker for Max Pain */}
+                         <div className="absolute top-0 bottom-0 w-1 bg-yellow-500 z-10 left-1/2"></div>
+                    </div>
+                    <div className="flex justify-between text-[8px] text-gray-500 mt-1">
+                        <span>当前价</span>
+                        <span>痛点</span>
+                        <span>当前价</span>
+                    </div>
+                </div>
+
+                {/* Gamma & IV */}
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center bg-[#151c24] p-1.5 rounded border border-gray-800/50">
+                        <span className="text-[9px] text-gray-500 font-bold">Gamma 敞口</span>
+                        <span className={`text-[9px] font-bold ${options.gammaExposure.includes('Short') ? 'text-red-400' : 'text-green-400'}`}>
+                            {options.gammaExposure.includes('Short') ? '做空 (-GEX)' : '做多 (+GEX)'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center bg-[#151c24] p-1.5 rounded border border-gray-800/50">
+                        <span className="text-[9px] text-gray-500 font-bold">P/C 比率</span>
+                        <span className={`text-[9px] font-bold font-mono ${options.putCallRatio > 1 ? 'text-red-400' : 'text-green-400'}`}>
+                            {options.putCallRatio.toFixed(2)}
+                        </span>
+                    </div>
+                     <div className="flex justify-between items-center bg-[#151c24] p-1.5 rounded border border-gray-800/50">
+                        <span className="text-[9px] text-gray-500 font-bold">IV 排名</span>
+                        <span className="text-[9px] font-bold text-blue-300 truncate max-w-[80px]">
+                            {options.impliedVolatilityRank}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// NEW: Sentiment Divergence Meter
+const SentimentDivergenceMeter = ({ divergence }: { divergence?: SentimentDivergence }) => {
+    if (!divergence) return null;
+
+    const isBearishDiv = divergence.divergenceStatus.includes('Bearish');
+    const isBullishDiv = divergence.divergenceStatus.includes('Bullish');
+    const isAligned = divergence.divergenceStatus.includes('Aligned');
+
+    return (
+        <div className={`rounded-xl border p-4 mb-4 relative overflow-hidden ${isBearishDiv ? 'bg-red-900/5 border-red-500/20' : isBullishDiv ? 'bg-green-900/5 border-green-500/20' : 'bg-[#0b1215] border-gray-800'}`}>
+             <div className="flex justify-between items-center mb-3">
+                <h3 className="text-gray-500 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                    <Users className="w-3 h-3 text-purple-400" /> 情绪背离 (Sentiment Divergence)
+                </h3>
+                <span className={`text-[9px] px-2 py-0.5 rounded font-bold border ${isBearishDiv ? 'text-red-400 border-red-500/50 bg-red-900/20' : isBullishDiv ? 'text-green-400 border-green-500/50 bg-green-900/20' : 'text-gray-400 border-gray-600'}`}>
+                    {divergence.divergenceStatus}
+                </span>
+             </div>
+
+             <div className="relative h-12 bg-[#151c24] rounded-lg border border-gray-800 flex items-center px-2">
+                 {/* Center Line */}
+                 <div className="absolute left-1/2 top-2 bottom-2 w-px bg-gray-700"></div>
+                 
+                 {/* Retail Bar (Left = Fear, Right = Greed) */}
+                 <div className="flex-1 flex flex-col gap-1 pr-4">
+                     <div className="flex justify-between text-[8px] text-gray-500 uppercase font-bold">
+                         <span>Retail (散户)</span>
+                         <span className={divergence.retailMood.includes('Greed') ? 'text-red-400' : 'text-green-400'}>{divergence.retailMood}</span>
+                     </div>
+                     <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden flex justify-end">
+                         {/* If Greed, bar goes right. If Fear, bar goes left (visually represented by color/position) */}
+                         <div className={`h-full w-3/4 rounded-full ${divergence.retailMood.includes('Greed') ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                     </div>
+                 </div>
+
+                 {/* Institutional Bar (Left = Sell, Right = Buy) */}
+                 <div className="flex-1 flex flex-col gap-1 pl-4">
+                     <div className="flex justify-between text-[8px] text-gray-500 uppercase font-bold">
+                         <span className={divergence.institutionalAction.includes('Buy') ? 'text-green-400' : 'text-red-400'}>{divergence.institutionalAction}</span>
+                         <span>Inst (机构)</span>
+                     </div>
+                      <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
+                         <div className={`h-full w-3/4 rounded-full ${divergence.institutionalAction.includes('Buy') || divergence.institutionalAction.includes('Accumulation') ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                     </div>
+                 </div>
+             </div>
+             
+             {/* Warning Text */}
+             {(isBearishDiv || isBullishDiv) && (
+                 <div className="mt-2 text-[9px] text-gray-400 flex items-center gap-1.5 bg-[#000000]/20 p-1.5 rounded">
+                     <AlertTriangle className="w-2.5 h-2.5 text-yellow-500" />
+                     {isBearishDiv ? "警惕: 散户极度贪婪而机构在出货 (Retail Greed vs Smart Money Sell)" : "机会: 散户恐慌而机构在吸筹 (Retail Fear vs Smart Money Buy)"}
+                 </div>
+             )}
+        </div>
+    );
+};
+
+// NEW: Institutional Mechanics Component
+const InstitutionalMechanics = ({ wyckoff, volume, smc }: { wyckoff?: WyckoffData, volume?: VolumeProfile, smc?: SMCData }) => {
+    if (!wyckoff && !volume && !smc) return null;
+
+    const getWyckoffColor = (phase: string) => {
+        if (phase.includes('Accumulation') || phase.includes('Markup')) return 'text-green-400 border-green-500/30 bg-green-900/10';
+        if (phase.includes('Distribution') || phase.includes('Markdown')) return 'text-red-400 border-red-500/30 bg-red-900/10';
+        return 'text-yellow-400 border-yellow-500/30 bg-yellow-900/10';
+    };
+
+    return (
+        <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group hover:border-indigo-500/20 transition-colors mb-4">
+            <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Magnet className="w-20 h-20 text-indigo-500"/></div>
+            
+            <div className="flex justify-between items-start mb-4 border-b border-gray-800/50 pb-2">
+                 <h3 className="text-gray-500 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                    <BarChart className="w-3 h-3 text-indigo-400" /> 机构操盘逻辑 (Institutional Mechanics)
+                 </h3>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+                
+                {/* Wyckoff Phase */}
+                {wyckoff && (
+                    <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center">
+                             <span className="text-[9px] text-gray-500 uppercase font-bold">威科夫周期 (Wyckoff Phase)</span>
+                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${getWyckoffColor(wyckoff.phase)}`}>{wyckoff.phase}</span>
+                        </div>
+                        {/* Phase Bar */}
+                        <div className="flex h-1.5 w-full rounded-full overflow-hidden bg-gray-800 gap-px">
+                            <div className={`flex-1 ${wyckoff.phase.includes('Accumulation') ? 'bg-green-500' : 'bg-gray-700 opacity-30'}`}></div>
+                            <div className={`flex-1 ${wyckoff.phase.includes('Markup') ? 'bg-green-400' : 'bg-gray-700 opacity-30'}`}></div>
+                            <div className={`flex-1 ${wyckoff.phase.includes('Distribution') ? 'bg-red-500' : 'bg-gray-700 opacity-30'}`}></div>
+                            <div className={`flex-1 ${wyckoff.phase.includes('Markdown') ? 'bg-red-400' : 'bg-gray-700 opacity-30'}`}></div>
+                        </div>
+                        {wyckoff.event !== 'None' && (
+                             <div className="flex items-center gap-2 mt-1">
+                                <span className="text-[9px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/30 font-bold">事件: {wyckoff.event}</span>
+                                <span className="text-[9px] text-gray-500 truncate">{wyckoff.analysis}</span>
+                             </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Smart Money Concepts */}
+                {smc && (
+                    <div className="bg-[#151c24] p-3 rounded-lg border border-gray-800/50">
+                        <div className="flex items-center gap-2 mb-2">
+                             <Magnet className="w-3 h-3 text-purple-400" />
+                             <span className="text-[10px] text-gray-400 uppercase font-bold">聪明钱 (Smart Money)</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] text-gray-600">流动性 (Liquidity)</span>
+                                <span className={`text-[10px] font-bold ${smc.liquidityStatus.includes('Swept') ? 'text-green-400' : 'text-gray-300'}`}>{smc.liquidityStatus}</span>
+                            </div>
+                            <div className="flex flex-col text-right">
+                                <span className="text-[9px] text-gray-600">缺口 (FVG)</span>
+                                <span className="text-[10px] font-bold text-blue-300 truncate">{smc.fairValueGapStatus || 'None'}</span>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Volume Profile */}
+                {volume && (
+                    <div className="bg-[#151c24] p-3 rounded-lg border border-gray-800/50">
+                        <div className="flex items-center justify-between mb-2">
+                             <div className="flex items-center gap-2">
+                                <Layers className="w-3 h-3 text-yellow-400" />
+                                <span className="text-[10px] text-gray-400 uppercase font-bold">筹码分布 (Volume Profile)</span>
+                             </div>
+                             <span className={`text-[9px] font-bold ${volume.verdict.includes('Overhead') ? 'text-red-400' : 'text-green-400'}`}>{volume.verdict}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                             {volume.hvnLevels.length > 0 ? volume.hvnLevels.map((lvl, i) => (
+                                <span key={i} className="text-[9px] bg-yellow-500/10 text-yellow-500 px-1.5 py-0.5 rounded border border-yellow-500/20 font-mono">HVN: {formatCurrency(lvl)}</span>
+                             )) : <span className="text-[9px] text-gray-600">正在计算筹码峰...</span>}
+                             
+                             {volume.lvnZones.length > 0 && (
+                                <span className="text-[9px] bg-blue-500/10 text-blue-400 px-1.5 py-0.5 rounded border border-blue-500/20 font-mono">真空区: {volume.lvnZones[0]}</span>
+                             )}
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+// NEW: Adversarial Tribunal Component
+const TribunalDisplay = ({ tribunal }: { tribunal: MarketTribunal }) => {
+    return (
+        <div className="bg-[#0b1215] rounded-xl border border-gray-800 overflow-hidden relative group mb-4">
+            {/* Gavel Background Graphic */}
+            <div className="absolute right-4 top-4 opacity-5 pointer-events-none">
+                <Gavel className="w-24 h-24 text-gray-500" />
+            </div>
+            
+            <div className="p-4 border-b border-gray-800/50 bg-[#151c24]/50 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <div className="bg-yellow-500/10 text-yellow-500 p-1.5 rounded-lg border border-yellow-500/30">
+                        <ScaleIcon className="w-4 h-4" />
+                    </div>
+                    <div>
+                        <h3 className="text-xs font-bold text-gray-200 uppercase tracking-widest">Adversarial Tribunal</h3>
+                        <p className="text-[9px] text-gray-500 uppercase font-bold tracking-wider">Permabull vs Permabear Debate</p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2">
+                {/* Permabull Case */}
+                <div className="p-4 border-b md:border-b-0 md:border-r border-gray-800 bg-green-900/5 relative">
+                    <div className="flex items-center gap-2 mb-3">
+                         <ThumbsUp className="w-4 h-4 text-green-500" />
+                         <span className="text-[10px] font-bold text-green-400 uppercase tracking-widest">Permabull (死多头)</span>
+                    </div>
+                    <ul className="space-y-2">
+                        {tribunal.bullCase.arguments.map((arg, idx) => (
+                            <li key={idx} className="flex gap-2 text-[11px] text-gray-300 leading-snug">
+                                <span className="text-green-500 font-bold">•</span>
+                                <span>{arg.point}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+
+                {/* Permabear Case */}
+                <div className="p-4 bg-red-900/5 relative">
+                    <div className="flex items-center gap-2 mb-3">
+                         <ThumbsDown className="w-4 h-4 text-red-500" />
+                         <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Permabear (死空头)</span>
+                    </div>
+                    <ul className="space-y-2">
+                        {tribunal.bearCase.arguments.map((arg, idx) => (
+                            <li key={idx} className="flex gap-2 text-[11px] text-gray-300 leading-snug">
+                                <span className="text-red-500 font-bold">•</span>
+                                <span>{arg.point}</span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </div>
+
+            {/* Chief Justice Verdict */}
+            <div className="bg-[#0b1215] border-t border-gray-800 p-4 relative overflow-hidden">
+                <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-yellow-500 via-purple-500 to-yellow-500"></div>
+                
+                <div className="flex items-start gap-3">
+                    <Gavel className="w-6 h-6 text-gray-500 mt-0.5 shrink-0" />
+                    <div>
+                        <div className="flex items-center gap-2 mb-1">
+                             <span className="text-[10px] text-gray-400 font-bold uppercase">大法官裁决 (Verdict)</span>
+                             <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${tribunal.chiefJustice.winner === 'BULLS' ? 'bg-green-500/20 text-green-400 border-green-500/50' : tribunal.chiefJustice.winner === 'BEARS' ? 'bg-red-500/20 text-red-400 border-red-500/50' : 'bg-gray-700 text-gray-300 border-gray-600'}`}>
+                                 胜方: {tribunal.chiefJustice.winner}
+                             </span>
+                        </div>
+                        <p className="text-xs text-gray-300 leading-relaxed italic">
+                            "{tribunal.chiefJustice.reasoning}"
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// NEW: Correlation & Catalyst Strip
+const CorrelationStrip = ({ correlation, catalyst }: { correlation?: CorrelationMatrix, catalyst?: CatalystRadar }) => {
+    if (!correlation && !catalyst) return null;
+
+    const isHeadwind = correlation?.impact.includes('Headwind');
+    const isTailwind = correlation?.impact.includes('Tailwind');
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
+            {correlation && (
+                <div className={`p-3 rounded-lg border flex items-center justify-between ${isHeadwind ? 'bg-red-500/5 border-red-500/20' : isTailwind ? 'bg-green-500/5 border-green-500/20' : 'bg-[#1a232e] border-gray-800'}`}>
+                    <div className="flex flex-col">
+                        <span className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                            <Link2 className="w-3 h-3" /> 跨市场关联 (Correlation)
+                        </span>
+                        <div className="text-xs font-bold text-gray-300 mt-1 flex items-center gap-2">
+                             <span>{correlation.correlatedAsset}</span>
+                             <span className={`text-[9px] px-1.5 py-0.5 rounded border ${isHeadwind ? 'text-red-400 border-red-500/30' : 'text-gray-400 border-gray-700'}`}>{correlation.correlationType}</span>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                         <div className={`text-xs font-bold ${isHeadwind ? 'text-red-400' : isTailwind ? 'text-green-400' : 'text-gray-400'}`}>
+                             {correlation.impact}
+                         </div>
+                         <div className="text-[9px] text-gray-600 font-mono">{correlation.assetTrend} 趋势</div>
+                    </div>
+                </div>
+            )}
+            
+            {catalyst && (
+                <div className="p-3 rounded-lg border bg-[#1a232e] border-gray-800 flex items-center justify-between relative overflow-hidden">
+                    {catalyst.eventImpact === 'High Volatility' && <div className="absolute right-0 top-0 p-1"><span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span></span></div>}
+                    <div className="flex flex-col">
+                         <span className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                            <CalendarClock className="w-3 h-3" /> 关键事件雷达 (Catalyst)
+                        </span>
+                        <div className="text-xs font-bold text-gray-200 mt-1 truncate max-w-[150px]">
+                            {catalyst.nextEvent}
+                        </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border mb-0.5 ${catalyst.eventImpact === 'High Volatility' ? 'text-orange-400 border-orange-500/30 bg-orange-900/10' : 'text-blue-400 border-blue-500/30'}`}>
+                            {catalyst.eventImpact}
+                        </span>
+                        <span className="text-[8px] text-gray-500">{catalyst.timingWarning}</span>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+// NEW: Fractal Resonance Strip
+const ResonanceStrip = ({ resonance }: { resonance: TrendResonance }) => {
+    const getTrendIcon = (trend: string) => {
+        if (trend.includes('Bullish')) return <ArrowBigUp className="w-4 h-4 text-green-500 fill-green-500/20" />;
+        if (trend.includes('Bearish')) return <ArrowBigDown className="w-4 h-4 text-red-500 fill-red-500/20" />;
+        return <Minus className="w-4 h-4 text-yellow-500" />;
+    };
+
+    const isConflict = resonance.resonance.includes('Conflict');
+    const isResonant = resonance.resonance.includes('Resonant');
+
+    return (
+        <div className={`p-3 rounded-lg border mb-4 flex items-center justify-between ${isResonant ? 'bg-green-500/5 border-green-500/20' : isConflict ? 'bg-orange-500/5 border-orange-500/20' : 'bg-[#1a232e] border-gray-800'}`}>
+             <div className="flex items-center gap-4">
+                <div className="flex flex-col">
+                     <span className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                        <Layers className="w-3 h-3" /> 分形共振 (Fractal)
+                    </span>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="flex items-center gap-1 bg-[#0b1215] px-1.5 py-0.5 rounded border border-gray-700" title="Higher Timeframe">
+                            <span className="text-[9px] text-gray-500 font-bold">HTF</span>
+                            {getTrendIcon(resonance.trendHTF)}
+                        </div>
+                         <ArrowRight className="w-3 h-3 text-gray-600" />
+                        <div className="flex items-center gap-1 bg-[#0b1215] px-1.5 py-0.5 rounded border border-gray-700" title="Lower Timeframe">
+                            <span className="text-[9px] text-gray-500 font-bold">LTF</span>
+                            {getTrendIcon(resonance.trendLTF)}
+                        </div>
+                    </div>
+                </div>
+             </div>
+             <div className="text-right">
+                <div className={`text-xs font-bold ${isResonant ? 'text-green-400' : isConflict ? 'text-orange-400' : 'text-gray-400'}`}>
+                    {resonance.resonance}
+                </div>
+                <div className="text-[9px] text-gray-600">Multi-Timeframe Align</div>
+             </div>
+        </div>
+    );
+}
+
 // NEW: Trinity Consensus UI
 const TrinityConsensusCard = ({ consensus, smartMoney, hasVisual }: { consensus: TrinityConsensus, smartMoney?: SmartMoneyAnalysis, hasVisual?: boolean }) => {
     const getVerdictColor = (v: string) => v.includes('STRONG') ? 'text-green-400 bg-green-500/10 border-green-500/30' : v.includes('DIVERGENCE') ? 'text-red-400 bg-red-500/10 border-red-500/30' : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
@@ -112,7 +555,7 @@ const TrinityConsensusCard = ({ consensus, smartMoney, hasVisual }: { consensus:
              
              <div className="flex justify-between items-start mb-4 border-b border-gray-800/50 pb-2">
                  <h3 className="text-gray-500 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
-                    <Scale className="w-3 h-3 text-blue-400" /> 三位一体共识 (Trinity Consensus)
+                    <Scale className="w-3 h-3 text-blue-400" /> 三位一体共识 (Trinity Consensus 2.0)
                  </h3>
                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${getVerdictColor(consensus.consensusVerdict)}`}>
                     {consensus.consensusVerdict}
@@ -131,7 +574,7 @@ const TrinityConsensusCard = ({ consensus, smartMoney, hasVisual }: { consensus:
                  <div className="bg-[#151c24] p-2 rounded-lg text-center border border-gray-800 relative overflow-hidden">
                      {/* Visual Indicator */}
                      {hasVisual && <div className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-indigo-500/20" title="Vision Model Active"><Eye className="w-2.5 h-2.5 text-indigo-400 animate-pulse"/></div>}
-                     <div className="text-[9px] text-gray-500 font-bold uppercase mb-1 flex items-center justify-center gap-1">技术派 (Chart)</div>
+                     <div className="text-[9px] text-gray-500 font-bold uppercase mb-1 flex items-center justify-center gap-1">图表/宏观 (Chart)</div>
                      <div className="text-lg font-mono font-bold text-purple-400">{consensus.chartPatternScore}</div>
                  </div>
              </div>
@@ -162,14 +605,13 @@ const LogicBlueprint = ({ setup }: { setup: TradingSetup }) => {
             
             <div className="p-4 relative z-10">
                 <h3 className="text-[10px] text-blue-400 font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-blue-500/20 pb-2">
-                    <PenTool className="w-3 h-3" /> 交易逻辑蓝图 (Architect Blueprint)
+                    <PenTool className="w-3 h-3" /> 核心策略形态 (Strategy Identity)
                 </h3>
 
                 <div className="grid grid-cols-1 gap-4">
                      {/* Identity */}
                      <div className="flex items-center gap-3">
-                        <div className="text-[9px] text-gray-500 uppercase font-bold shrink-0">核心策略形态</div>
-                        <div className="font-mono text-sm text-white font-bold bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-md flex-1 truncate">
+                        <div className="font-mono text-sm text-white font-bold bg-blue-500/10 border border-blue-500/30 px-3 py-1 rounded-md flex-1 truncate text-center">
                             {setup.strategyIdentity || "Structure Analysis"}
                         </div>
                      </div>
@@ -285,16 +727,17 @@ const CriticTerminal = ({ redTeam }: { redTeam: RedTeaming }) => {
 const AnalysisLoadingState = () => {
     const [step, setStep] = useState(0);
     const steps = [
-        { id: 0, text: "正在初始化量子网络链接...", sub: "Initializing Quantum Uplink", icon: Globe, color: "text-blue-400", bg: "bg-blue-500" },
-        { id: 1, text: "Gemini 3 Pro: 识别市场结构...", sub: "Scanning Market Structure (MSS)", icon: Bot, color: "text-yellow-400", bg: "bg-yellow-500" },
-        { id: 2, text: "正在推演牛熊剧本与概率...", sub: "Scenario Deduction Calculation", icon: GitCommit, color: "text-purple-400", bg: "bg-purple-500" },
-        { id: 3, text: "构建交易逻辑蓝图 (Architect)...", sub: "Constructing Trade Blueprint", icon: PenTool, color: "text-cyan-400", bg: "bg-cyan-500" },
-        { id: 4, text: "红队风控正在进行压力测试...", sub: "Running Red Team Stress Test", icon: ShieldAlert, color: "text-red-400", bg: "bg-red-500" }
+        { id: 0, text: "INIT_TRIBUNAL (法庭辩论)", sub: "正在召开多空法庭辩论 (Adversarial Debate)..." },
+        { id: 1, text: "SCAN_GAMMA (期权扫描)", sub: "正在计算期权痛点 (Max Pain & Gamma)..." },
+        { id: 2, text: "CHECK_SENTIMENT (情绪背离)", sub: "正在扫描散户vs机构情绪背离 (Divergence)..." },
+        { id: 3, text: "DEFINE_LIQUIDITY (流动性)", sub: "正在寻找流动性猎杀 (Liquidity Grab)..." },
+        { id: 4, text: "CALC_REGIME (市场体制)", sub: "正在判定市场体制与自适应策略 (Regime)..." }, // Updated
+        { id: 5, text: "EXEC_STRESS_TEST (压力测试)", sub: "红队风控正在进行压力测试..." }
     ];
 
     useEffect(() => {
         // Extended timings for Pro (Total ~15s)
-        const timings = [3000, 3500, 3000, 2500, 3000];
+        const timings = [3000, 2000, 2000, 2000, 2000, 3000];
         let currentStep = 0;
         const nextStep = () => {
             if (currentStep < steps.length - 1) {
@@ -313,45 +756,51 @@ const AnalysisLoadingState = () => {
         <div className="absolute inset-0 bg-[linear-gradient(rgba(18,18,18,0)_1px,transparent_1px),linear-gradient(90deg,rgba(18,18,18,0)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b1215] via-transparent to-transparent"></div>
         
-        {/* Central HUD */}
+        {/* Central HUD - RESTRUCTURED FOR SPACING */}
         <div className="flex-1 flex flex-col items-center justify-center relative z-10">
-            <div className="relative mb-12">
+            {/* Increased bottom margin to mb-20 to separate spinner from title */}
+            <div className="relative mb-20 scale-110 md:scale-125">
                 <div className="absolute -inset-8 bg-blue-500/10 rounded-full blur-2xl animate-pulse"></div>
-                <div className="w-24 h-24 rounded-full border-2 border-gray-800 flex items-center justify-center relative bg-[#0b1215]">
-                    <div className="absolute inset-0 border-t-2 border-blue-500 rounded-full animate-spin"></div>
-                    <div className="absolute inset-2 border-r-2 border-purple-500 rounded-full animate-spin [animation-direction:reverse] duration-1000"></div>
-                    <Loader2 className={`w-8 h-8 ${steps[step].color} animate-pulse`} />
+                <div className="w-24 h-24 rounded-full border border-gray-700 flex items-center justify-center relative bg-[#0b1215] shadow-2xl">
+                    <div className="absolute inset-0 border-t-2 border-blue-500 rounded-full animate-spin duration-[3s]"></div>
+                    <div className="absolute inset-2 border-r-2 border-purple-500 rounded-full animate-spin [animation-direction:reverse] duration-[5s]"></div>
+                    <div className="absolute inset-4 border-l-2 border-cyan-500 rounded-full animate-spin duration-[2s]"></div>
+                    <Cpu className="w-8 h-8 text-blue-400 animate-pulse" />
                 </div>
-                <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-48 text-center">
-                    <div className="h-1 bg-gray-800 rounded-full overflow-hidden">
-                        <div className={`h-full ${steps[step].bg} transition-all duration-300 ease-out`} style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
+                
+                {/* Moved progress label down further with -bottom-16 */}
+                <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 w-48 text-center space-y-3">
+                     <div className="text-[10px] font-mono text-blue-400 animate-pulse tracking-widest">THINKING_3D...</div>
+                    <div className="h-0.5 bg-gray-800 rounded-full overflow-hidden w-full">
+                        <div className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 animate-[shimmer_2s_infinite] w-full" style={{ width: `${((step + 1) / steps.length) * 100}%` }}></div>
                     </div>
                 </div>
             </div>
 
-            <h3 className="text-2xl font-black text-white tracking-tight flex items-col gap-2 mb-2">
-                SYSTEM <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">ANALYZING</span>
+            {/* Added top margin mt-6 for breathing room */}
+            <h3 className="mt-6 text-xl font-bold text-white tracking-tight flex items-center gap-3 mb-3 animate-pulse">
+                GEMINI <span className="text-blue-500">TRIBUNAL</span>
             </h3>
             
-            <div className="flex flex-col items-center gap-1 h-16">
-                 <span className={`text-sm font-bold transition-all duration-300 ${steps[step].color} tracking-wide`}>
-                    {steps[step].text}
-                </span>
-                <span className="text-[10px] text-gray-600 font-mono uppercase tracking-widest">
+            <div className="flex flex-col items-center gap-2 h-12">
+                 <span className="text-sm font-bold text-gray-200 tracking-wide transition-all">
                     {steps[step].sub}
+                </span>
+                <span className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">
+                   >> {steps[step].text}
                 </span>
             </div>
         </div>
 
         {/* Terminal Log */}
-        <div className="h-32 border-t border-gray-800 pt-4 relative">
-             <div className="absolute top-0 left-0 bg-blue-500 h-[1px] w-full shadow-[0_0_10px_#3b82f6]"></div>
-             <div className="font-mono text-[10px] space-y-1.5 opacity-70">
+        <div className="h-32 border-t border-gray-800 pt-4 relative bg-[#080a0c] rounded-lg p-3 font-mono text-[10px] shadow-inner overflow-hidden">
+             <div className="absolute top-0 left-0 bg-gradient-to-r from-transparent via-blue-500/20 to-transparent h-[1px] w-full"></div>
+             <div className="space-y-1.5 opacity-80">
                 {steps.map((s, idx) => (
-                    <div key={idx} className={`flex items-center gap-2 transition-all duration-500 ${idx === step ? 'text-white opacity-100 translate-x-2' : idx < step ? 'text-green-500/50' : 'text-gray-700'}`}>
-                        <span className="w-3">{idx < step ? 'OK' : idx === step ? '>' : '.'}</span>
-                        <span>{s.sub}</span>
-                        {idx === step && <span className="animate-pulse">_</span>}
+                    <div key={idx} className={`flex items-center gap-2 transition-all duration-300 ${idx === step ? 'text-white translate-x-1' : idx < step ? 'text-green-500/70' : 'text-gray-700 blur-[1px]'}`}>
+                        <span className="w-4">{idx < step ? '[OK]' : idx === step ? '>' : '.'}</span>
+                        <span>{s.text}</span>
+                        {idx === step && <span className="animate-pulse text-blue-400">_</span>}
                     </div>
                 ))}
              </div>
@@ -376,7 +825,7 @@ const DataMiningCard = ({ data }: { data: DataMining }) => {
                     </h3>
                 </div>
                 <div className={`text-[9px] px-2 py-0.5 rounded border font-mono ${isHighConf ? 'text-green-400 border-green-500/30' : isLowConf ? 'text-red-400 border-red-500/30' : 'text-yellow-400 border-yellow-500/30'}`}>
-                    CONFIDENCE: {data.confidenceLevel}
+                    置信度: {data.confidenceLevel}
                 </div>
              </div>
 
@@ -428,6 +877,16 @@ const MarketBadge = ({ context }: { context: string }) => {
     );
 }
 
+// Visual Connector Component for the Funnel
+const LogicConnector = ({ label }: { label?: string }) => (
+    <div className="flex flex-col items-center justify-center py-2 relative z-0 opacity-50">
+        <div className="w-0.5 h-6 bg-gradient-to-b from-gray-800 to-blue-500/50"></div>
+        {label && <div className="text-[8px] uppercase tracking-widest text-blue-500/70 font-bold bg-[#151c24] px-1 z-10">{label}</div>}
+        <div className="w-0.5 h-6 bg-gradient-to-b from-blue-500/50 to-gray-800"></div>
+        <ArrowDown className="w-3 h-3 text-gray-700 -mt-1" />
+    </div>
+);
+
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, onAnalyze, symbol }) => {
   const isInitialLoading = loading && !analysis;
   const isRefreshing = loading && !!analysis;
@@ -458,36 +917,87 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
   if (!analysis) {
     return (
       <div className="bg-[#151c24] rounded-xl border border-gray-800 p-8 h-full flex flex-col items-center justify-center text-center relative overflow-hidden group shadow-2xl">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-500/30 to-transparent opacity-50"></div>
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
+        {/* Animated Background Mesh */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.05)_1px,transparent_1px)] bg-[size:30px_30px] opacity-30 animate-[pulse_8s_infinite]"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0b1215] via-transparent to-transparent"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
 
-        <div className="flex items-center justify-center gap-6 mb-8 relative z-10">
-             <div className="relative group/core">
-                 <div className="absolute -inset-4 bg-blue-500/20 rounded-full blur-xl opacity-0 group-hover/core:opacity-100 transition-opacity"></div>
-                 <div className="bg-[#0b1215] p-5 rounded-2xl border border-blue-500/30 shadow-lg relative">
-                    <Bot className="w-8 h-8 text-blue-400" />
-                 </div>
-                 <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold text-blue-400 uppercase tracking-wider opacity-0 group-hover/core:opacity-100 transition-all translate-y-2 group-hover/core:translate-y-0">Analyst</div>
-             </div>
-             <div className="text-gray-700 font-black text-xl">VS</div>
-             <div className="relative group/core">
-                 <div className="absolute -inset-4 bg-red-500/20 rounded-full blur-xl opacity-0 group-hover/core:opacity-100 transition-opacity"></div>
-                 <div className="bg-[#0b1215] p-5 rounded-2xl border border-red-500/30 shadow-lg relative">
-                    <ShieldAlert className="w-8 h-8 text-red-400" />
-                 </div>
-                 <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[9px] font-bold text-red-400 uppercase tracking-wider opacity-0 group-hover/core:opacity-100 transition-all translate-y-2 group-hover/core:translate-y-0">Critic</div>
-             </div>
+        {/* SYSTEM ARCHITECTURE VISUALIZATION */}
+        <div className="relative w-full h-48 mb-8 flex items-center justify-center select-none pointer-events-none scale-90 lg:scale-100">
+            {/* Connecting Lines with Data Flow Animation */}
+            <div className="absolute top-1/2 left-[20%] right-[20%] h-[1px] bg-gray-800 -z-20"></div>
+            {/* Left to Center Packet */}
+            <div className="absolute top-1/2 left-[20%] w-1.5 h-1.5 bg-cyan-400 rounded-full shadow-[0_0_8px_cyan] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] hidden md:block" style={{ animationDuration: '3s' }}></div>
+            {/* Center to Right Packet */}
+            <div className="absolute top-1/2 right-[20%] w-1.5 h-1.5 bg-red-400 rounded-full shadow-[0_0_8px_red] animate-[ping_2s_cubic-bezier(0,0,0.2,1)_infinite] hidden md:block" style={{ animationDuration: '3s', animationDelay: '1.5s' }}></div>
+            
+            {/* Center Node (AI) */}
+            <div className="relative z-10 group/core">
+                <div className="absolute -inset-6 bg-blue-500/10 rounded-full blur-xl animate-pulse"></div>
+                <div className="w-20 h-20 bg-[#0b1215] border border-blue-500/50 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(59,130,246,0.2)] relative z-20 transition-transform duration-500 group-hover/core:scale-110">
+                    <Bot className="w-8 h-8 text-blue-400 group-hover/core:text-blue-300 transition-colors" />
+                </div>
+                {/* Orbital Rings */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border border-blue-500/20 rounded-full animate-[spin_8s_linear_infinite]"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-44 h-44 border border-purple-500/10 rounded-full animate-[spin_12s_linear_infinite_reverse] border-dashed"></div>
+                
+                <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] font-bold text-blue-400 uppercase tracking-widest whitespace-nowrap bg-[#0b1215] px-2 py-0.5 rounded border border-blue-500/20">Gemini 3 Core</div>
+            </div>
+
+            {/* Left Node: Market Data Feed */}
+            <div className="absolute left-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col items-center gap-2">
+                <div className="w-10 h-10 bg-[#1a232e] border border-gray-700 rounded-lg flex items-center justify-center z-10 shadow-lg group-hover:border-cyan-500/50 transition-colors">
+                    <Activity className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div className="h-[1px] w-24 bg-gradient-to-r from-cyan-500/50 to-transparent absolute left-full top-1/2 -translate-y-1/2 -z-10"></div>
+                <div className="absolute top-full mt-2 text-[8px] text-gray-600 uppercase tracking-wider font-bold">Live Feed</div>
+            </div>
+
+            {/* Right Node: Red Team Critic */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden md:flex flex-col items-center gap-2">
+                <div className="h-[1px] w-24 bg-gradient-to-r from-transparent to-red-500/50 absolute right-full top-1/2 -translate-y-1/2 -z-10"></div>
+                <div className="w-10 h-10 bg-[#1a232e] border border-red-500/30 rounded-lg flex items-center justify-center z-10 shadow-[0_0_15px_rgba(239,68,68,0.1)] group-hover:border-red-500/60 transition-colors">
+                    <ShieldAlert className="w-5 h-5 text-red-400" />
+                </div>
+                <div className="absolute top-full mt-2 text-[8px] text-gray-600 uppercase tracking-wider font-bold">Critic Protocol</div>
+            </div>
+
+            {/* Top Node: Sentiment */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 hidden md:flex flex-col items-center gap-2">
+                 <div className="w-8 h-8 bg-[#1a232e] border border-gray-700 rounded-lg flex items-center justify-center z-10">
+                    <Users className="w-4 h-4 text-green-400" />
+                </div>
+                <div className="w-[1px] h-12 bg-gradient-to-b from-green-500/30 to-transparent absolute top-full left-1/2 -translate-x-1/2 -z-10"></div>
+            </div>
+        </div>
+
+        {/* Status Indicators */}
+        <div className="flex items-center justify-center gap-4 mb-8 text-[9px] text-gray-500 font-mono uppercase tracking-widest">
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>System Online</div>
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Latency: 12ms</div>
+             <div className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>Trinity: Active</div>
         </div>
         
-        <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Gemini 3 Pro <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">Trinity</span></h3>
-        <p className="text-gray-500 text-xs mb-8 max-w-[260px] leading-relaxed">
-            启动机构级全景态势感知。三位一体共识校验 (Trinity Consensus)，寻找最严谨的交易机会。
-        </p>
-        
-        <button onClick={onAnalyze} className="group relative inline-flex items-center justify-center gap-3 bg-white hover:bg-gray-100 text-black font-bold py-3.5 px-8 rounded-xl transition-all shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] transform hover:-translate-y-1 active:translate-y-0 z-10">
-            <Zap className="w-4 h-4 fill-black" />
-            <span>启动深度分析</span>
+        {/* Enhanced Launch Button */}
+        <button 
+            onClick={onAnalyze} 
+            className="relative group w-full max-w-sm mx-auto overflow-hidden rounded-xl bg-white p-[1px] transition-all duration-300 hover:bg-gradient-to-r hover:from-blue-500 hover:via-purple-500 hover:to-blue-500 hover:shadow-[0_0_40px_rgba(59,130,246,0.4)] hover:scale-[1.02] active:scale-[0.98]"
+        >
+            <div className="relative h-full w-full bg-white rounded-[10px] py-4 flex items-center justify-center gap-3 overflow-hidden">
+                {/* Holographic Sweep Effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-gray-200/50 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out z-0"></div>
+                
+                <div className="relative z-10 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-purple-600 fill-purple-100 animate-pulse" />
+                    <span className="text-sm font-black text-black tracking-widest uppercase">启动深度分析 (Start Analysis)</span>
+                    <Zap className="w-4 h-4 text-blue-600 fill-blue-100" />
+                </div>
+            </div>
         </button>
+
+        <p className="mt-4 text-[10px] text-gray-600 text-center max-w-xs mx-auto leading-relaxed">
+            Execute <span className="text-blue-400">Adversarial Tribunal Protocol</span> to perform a 3-way debate between Bull, Bear, and Chief Justice.
+        </p>
       </div>
     );
   }
@@ -611,78 +1121,60 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
             <div className="absolute left-1.5 top-4 bottom-4 w-0.5 bg-gradient-to-b from-blue-500/0 via-blue-500/20 to-blue-500/0 hidden lg:block"></div>
             
             <div className="space-y-6 pb-2 lg:pl-8">
-                {/* 3. SCENARIO DEDUCTION SECTION */}
-                {analysis.scenarios && (
-                <div className="bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
-                    <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><GitCommit className="w-20 h-20 text-purple-500"/></div>
-                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
-                        <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Deductions)
-                    </h3>
-
-                    <div className="grid grid-cols-1 gap-4">
-                        {/* Bullish */}
-                        <div className="group/item">
-                        <div className="flex justify-between text-xs items-center mb-1">
-                            <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-                                <ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本 (Bullish)
-                            </span>
-                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
-                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
-                            <div className="text-right">
-                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
-                                <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
-                            </div>
-                        </div>
-                        </div>
-
-                        {/* Neutral */}
-                        <div className="group/item">
-                        <div className="flex justify-between text-xs items-center mb-1">
-                            <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-                                <Minus className="w-3.5 h-3.5"/> 震荡剧本 (Neutral)
-                            </span>
-                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
-                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
-                            <div className="text-right">
-                                <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
-                                <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
-                            </div>
-                        </div>
-                        </div>
-
-                        {/* Bearish */}
-                        <div className="group/item">
-                        <div className="flex justify-between text-xs items-center mb-1">
-                            <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-                                <ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本 (Bearish)
-                            </span>
-                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
-                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
-                            <div className="text-right">
-                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
-                                <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
-                            </div>
-                        </div>
-                        </div>
+                
+                {/* --- FUNNEL LAYER 1: CONTEXT --- */}
+                {analysis.volatilityAnalysis && (
+                    <div className="relative">
+                        {/* Visual connector dot */}
+                         <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-blue-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_blue]"></div>
+                        <VolatilityRegimeCard volatility={analysis.volatilityAnalysis} />
                     </div>
-                </div>
                 )}
                 
+                {/* NEW: Correlation & Catalyst Strip */}
+                <CorrelationStrip correlation={analysis.correlationMatrix} catalyst={analysis.catalystRadar} />
+
+                {/* NEW: Fractal Resonance Strip */}
+                {analysis.trendResonance && <ResonanceStrip resonance={analysis.trendResonance} />}
+
+                {/* --- FUNNEL LAYER 2: EVIDENCE --- */}
+                <LogicConnector label="EVIDENCE CONVERGENCE" />
+
+                {/* NEW 5.0: OPTIONS GAMMA DASHBOARD */}
+                {analysis.optionsData && (
+                    <div className="relative">
+                        {/* Visual connector dot */}
+                         <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-yellow-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_yellow]"></div>
+                        <OptionsDashboard options={analysis.optionsData} currentPrice={analysis.realTimePrice || 0} />
+                    </div>
+                )}
+                
+                {/* NEW 5.0: SENTIMENT DIVERGENCE METER */}
+                {analysis.sentimentDivergence && (
+                    <div className="relative">
+                         <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-purple-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_purple]"></div>
+                        <SentimentDivergenceMeter divergence={analysis.sentimentDivergence} />
+                    </div>
+                )}
+
+                {/* NEW: ADVERSARIAL TRIBUNAL (The 3-Court System) */}
+                {analysis.marketTribunal && (
+                    <div className="relative">
+                        {/* Visual connector dot */}
+                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-yellow-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_yellow]"></div>
+                        <TribunalDisplay tribunal={analysis.marketTribunal} />
+                    </div>
+                )}
+                
+                {/* NEW 4.0: INSTITUTIONAL MECHANICS (Wyckoff / Volume / SMC) */}
+                {(analysis.wyckoff || analysis.volumeProfile || analysis.smc) && (
+                     <div className="relative">
+                        {/* Visual connector dot */}
+                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-indigo-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_indigo]"></div>
+                        <InstitutionalMechanics wyckoff={analysis.wyckoff} volume={analysis.volumeProfile} smc={analysis.smc} />
+                    </div>
+                )}
+
                 {/* 4. EVIDENCE LAYER (Consensus + Technicals) */}
                 <div className="space-y-4">
                     
@@ -762,41 +1254,179 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                     </div>
                 </div>
 
-                {/* 5. STRATEGY BLUEPRINT & EXECUTION (ACTION LAYER) */}
-                {analysis.tradingSetup && (
-                    <div className="space-y-4 relative">
-                        {/* Visual connector dot */}
-                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-cyan-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_cyan]"></div>
-                        
-                        {/* The Blueprint */}
-                        <LogicBlueprint setup={analysis.tradingSetup} />
-                        
-                        {/* Execution Map */}
-                        <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 hover:border-gray-700 transition-colors">
-                            <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-3 flex items-center gap-2 px-1 tracking-widest"><Crosshair className="w-3 h-3" /> 交易执行蓝图 (Execution Map)</h3>
-                            <div className="grid grid-cols-2 gap-3 mb-3">
-                                <div className="col-span-2 bg-blue-500/5 p-3 rounded-xl border border-blue-500/20 flex items-center justify-between group hover:bg-blue-500/10 transition-colors">
-                                    <div className="flex flex-col gap-1"><div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase"><Navigation className="w-3 h-3" /> 建议入场 (Entry)</div><div className="text-xs font-mono font-medium text-blue-200 opacity-80 group-hover:opacity-100">{analysis.entryStrategy || "等待信号 (Wait)"}</div></div>
-                                    <div className="text-xl font-mono font-bold text-white tracking-tight">{formatCurrency(analysis.entryPrice)}</div>
-                                </div>
-                                <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase"><Target className="w-3 h-3" /> 止盈目标 (TP)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.takeProfit)}</div></div>
-                                <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col gap-1"><div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase"><ShieldAlert className="w-3 h-3" /> 止损风控 (SL)</div><div className="text-lg font-mono font-medium text-white">{formatCurrency(analysis.stopLoss)}</div></div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800"><div className="flex justify-between items-center mb-2 border-b border-gray-800 pb-1"><span className="text-[9px] text-gray-500 uppercase font-bold">关键位 (Key Levels)</span></div><div className="flex justify-between text-xs font-mono"><span className="text-red-300">{formatCurrency(analysis.resistanceLevel || 0)}</span><span className="text-gray-600">/</span><span className="text-green-300">{formatCurrency(analysis.supportLevel || 0)}</span></div></div>
-                                {analysis.futurePrediction && (
-                                    <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col justify-center"><div className="flex items-center justify-between mb-2"><span className="text-[9px] text-blue-300 font-bold uppercase flex gap-1"><Activity className="w-3 h-3"/> 预测区间</span><span className="text-[9px] text-gray-500 font-mono">{analysis.futurePrediction.confidence}%</span></div><div className="relative h-1.5 bg-gray-800 rounded-full w-full overflow-hidden"><div className="absolute top-0 bottom-0 bg-blue-500/20 w-full"></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]" style={{ left: `${predictionPercentage}%` }}></div></div><div className="flex justify-between text-[8px] font-mono text-gray-500 mt-1"><span>{formatCurrency(analysis.futurePrediction.targetLow)}</span><span>{formatCurrency(analysis.futurePrediction.targetHigh)}</span></div></div>
-                                )}
+                {/* --- FUNNEL LAYER 3: DEDUCTION --- */}
+                <LogicConnector label="SCENARIO DEDUCTION" />
+
+                {/* 3. SCENARIO DEDUCTION SECTION */}
+                {analysis.scenarios && (
+                <div className="bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
+                    <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><GitCommit className="w-20 h-20 text-purple-500"/></div>
+                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
+                        <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Deductions)
+                    </h3>
+
+                    <div className="grid grid-cols-1 gap-4">
+                        {/* Bullish */}
+                        <div className="group/item">
+                        <div className="flex justify-between text-xs items-center mb-1">
+                            <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
+                                <ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本 (Bullish)
+                            </span>
+                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
+                            <div className="text-right">
+                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                                <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
                             </div>
                         </div>
+                        </div>
+
+                        {/* Neutral */}
+                        <div className="group/item">
+                        <div className="flex justify-between text-xs items-center mb-1">
+                            <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                <Minus className="w-3.5 h-3.5"/> 震荡剧本 (Neutral)
+                            </span>
+                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
+                            <div className="text-right">
+                                <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
+                                <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
+                            </div>
+                        </div>
+                        </div>
+
+                        {/* Bearish */}
+                        <div className="group/item">
+                        <div className="flex justify-between text-xs items-center mb-1">
+                            <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                                <ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本 (Bearish)
+                            </span>
+                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                            <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
+                        </div>
+                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
+                            <div className="text-right">
+                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                                <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
+                            </div>
+                        </div>
+                        </div>
                     </div>
+                </div>
+                )}
+                
+                {/* --- FUNNEL LAYER 4: FINAL EXECUTION (THE TIP) --- */}
+                {analysis.tradingSetup && (
+                    <>
+                        <LogicConnector label="FINAL SYNTHESIS" />
+                        <div className="space-y-4 relative bg-gradient-to-b from-[#151c24] to-[#0b1215] rounded-xl border border-blue-500/40 shadow-[0_0_20px_rgba(37,99,235,0.1)] p-1">
+                            
+                            {/* Visual connector dot */}
+                            <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-cyan-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_cyan]"></div>
+                            
+                            {/* The Blueprint */}
+                            <div className="bg-[#151c24] rounded-t-lg p-1">
+                                <LogicBlueprint setup={analysis.tradingSetup} />
+                            </div>
+                            
+                            {/* Execution Map - Styled as the destination */}
+                            <div className="bg-[#0b1215] p-4 rounded-b-lg border-t border-gray-800">
+                                <h3 className="text-blue-400 text-[10px] font-bold uppercase mb-3 flex items-center gap-2 px-1 tracking-widest">
+                                    <Map className="w-3 h-3" /> 最终执行地图 (Execution Map)
+                                </h3>
+                                <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div className="col-span-2 bg-blue-500/10 p-4 rounded-xl border border-blue-500/30 flex items-center justify-between group hover:bg-blue-500/20 transition-colors">
+                                        <div className="flex flex-col gap-1">
+                                            <div className="flex items-center gap-1.5 text-blue-400 text-[10px] font-bold uppercase">
+                                                <Navigation className="w-3 h-3" /> 建议入场 (Entry)
+                                            </div>
+                                            <div className="text-xs font-mono font-medium text-blue-200 opacity-80 group-hover:opacity-100">
+                                                {analysis.entryStrategy || "等待信号 (Wait)"}
+                                            </div>
+                                        </div>
+                                        <div className="text-2xl font-mono font-black text-white tracking-tight shadow-black drop-shadow-md">
+                                            {formatCurrency(analysis.entryPrice)}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-[#151c24] p-3 rounded-xl border border-green-500/20 flex flex-col gap-1">
+                                        <div className="flex items-center gap-1.5 text-green-400 text-[10px] font-bold uppercase">
+                                            <Target className="w-3 h-3" /> 止盈 (TP)
+                                        </div>
+                                        <div className="text-lg font-mono font-medium text-white">
+                                            {formatCurrency(analysis.takeProfit)}
+                                        </div>
+                                    </div>
+                                    
+                                    <div className="bg-[#151c24] p-3 rounded-xl border border-red-500/20 flex flex-col gap-1">
+                                        <div className="flex items-center gap-1.5 text-red-400 text-[10px] font-bold uppercase">
+                                            <ShieldAlert className="w-3 h-3" /> 止损 (SL)
+                                        </div>
+                                        <div className="text-lg font-mono font-medium text-white">
+                                            {formatCurrency(analysis.stopLoss)}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Key Levels & Prediction */}
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800">
+                                        <div className="flex justify-between items-center mb-2 border-b border-gray-800 pb-1">
+                                            <span className="text-[9px] text-gray-500 uppercase font-bold">关键位 (Key Levels)</span>
+                                        </div>
+                                        <div className="flex justify-between text-xs font-mono">
+                                            <span className="text-red-300" title="Resistance">{formatCurrency(analysis.resistanceLevel || 0)}</span>
+                                            <span className="text-gray-600">/</span>
+                                            <span className="text-green-300" title="Support">{formatCurrency(analysis.supportLevel || 0)}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    {analysis.futurePrediction && (
+                                        <div className="bg-[#151c24] p-3 rounded-xl border border-gray-800 flex flex-col justify-center">
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[9px] text-blue-300 font-bold uppercase flex gap-1">
+                                                    <Activity className="w-3 h-3"/> 预测区间
+                                                </span>
+                                                <span className="text-[9px] text-gray-500 font-mono">{analysis.futurePrediction.confidence}%</span>
+                                            </div>
+                                            <div className="relative h-1.5 bg-gray-800 rounded-full w-full overflow-hidden">
+                                                <div className="absolute top-0 bottom-0 bg-blue-500/20 w-full"></div>
+                                                <div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_white]" style={{ left: `${predictionPercentage}%` }}></div>
+                                            </div>
+                                            <div className="flex justify-between text-[8px] font-mono text-gray-500 mt-1">
+                                                <span>{formatCurrency(analysis.futurePrediction.targetLow)}</span>
+                                                <span>{formatCurrency(analysis.futurePrediction.targetHigh)}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </>
                 )}
 
-                {/* 6. RED TEAM CRITIC */}
+                {/* 6. RED TEAM CRITIC (Post-Analysis Check) */}
                 {analysis.redTeaming && (
-                    <div className="relative">
+                    <div className="relative pt-4">
+                         <div className="border-t border-gray-800/50 mb-4 flex items-center justify-center">
+                             <span className="bg-[#151c24] px-2 text-[9px] text-gray-600 uppercase">Risk Validation</span>
+                         </div>
                         {/* Visual connector dot */}
-                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-red-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_red]"></div>
+                        <div className="absolute -left-[37px] top-10 w-3 h-3 rounded-full bg-red-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_red]"></div>
                         
                         <div className="flex items-center justify-between mb-2 px-1">
                             <div className="flex items-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-widest">

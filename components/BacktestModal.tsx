@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { BacktestStrategy, BacktestPeriod, BacktestResult } from '../types';
 import { performBacktest } from '../services/geminiService';
@@ -101,7 +102,7 @@ const BacktestModal: React.FC<BacktestModalProps> = ({ isOpen, onClose, symbol }
               {/* Key Metrics */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <ResultCard label="历史胜率" value={`${result.winRate}%`} icon={<Trophy className="w-4 h-4 text-yellow-500" />} />
-                <ResultCard label="净回报 (Est.)" value={result.netProfit} icon={<TrendingUp className="w-4 h-4 text-green-500" />} highlight />
+                <ResultCard label="净回报 (预估)" value={result.netProfit} icon={<TrendingUp className="w-4 h-4 text-green-500" />} highlight />
                 <ResultCard label="盈亏比 (PF)" value={result.profitFactor.toString()} icon={<Activity className="w-4 h-4 text-blue-500" />} />
                 <ResultCard label="总交易次数" value={result.totalTrades.toString()} icon={<Activity className="w-4 h-4 text-gray-500" />} />
               </div>
