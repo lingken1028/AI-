@@ -590,8 +590,8 @@ const CorrelationStrip = ({ correlation, catalyst }: { correlation?: Correlation
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
             {correlation && (
-                <div className={`p-3 rounded-lg border flex items-center justify-between ${isHeadwind ? 'bg-red-500/5 border-red-500/20' : isTailwind ? 'bg-green-500/5 border-green-500/20' : 'bg-[#1a232e] border-gray-800'}`}>
-                    <div className="flex flex-col">
+                <div className={`p-3 rounded-lg border flex items-center justify-between min-w-0 ${isHeadwind ? 'bg-red-500/5 border-red-500/20' : isTailwind ? 'bg-green-500/5 border-green-500/20' : 'bg-[#1a232e] border-gray-800'}`}>
+                    <div className="flex flex-col min-w-0 flex-1 mr-2">
                         <span className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
                             <Link2 className="w-3 h-3" /> 跨市场关联 (Correlation)
                         </span>
@@ -600,7 +600,7 @@ const CorrelationStrip = ({ correlation, catalyst }: { correlation?: Correlation
                              <span className={`text-[9px] px-1.5 py-0.5 rounded border ${isHeadwind ? 'text-red-400 border-red-500/30' : 'text-gray-400 border-gray-700'}`}>{correlation.correlationType}</span>
                         </div>
                     </div>
-                    <div className="text-right">
+                    <div className="text-right shrink-0">
                          <div className={`text-xs font-bold ${isHeadwind ? 'text-red-400' : isTailwind ? 'text-green-400' : 'text-gray-400'}`}>
                              {correlation.impact}
                          </div>
@@ -610,21 +610,21 @@ const CorrelationStrip = ({ correlation, catalyst }: { correlation?: Correlation
             )}
             
             {catalyst && (
-                <div className="p-3 rounded-lg border bg-[#1a232e] border-gray-800 flex items-center justify-between relative overflow-hidden">
+                <div className="p-3 rounded-lg border bg-[#1a232e] border-gray-800 flex items-center justify-between relative overflow-hidden min-w-0">
                     {catalyst.eventImpact === 'High Volatility' && <div className="absolute right-0 top-0 p-1"><span className="flex h-2 w-2 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span></span></div>}
-                    <div className="flex flex-col">
-                         <span className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                    <div className="flex flex-col min-w-0 flex-1 mr-3">
+                         <span className="text-[9px] text-gray-500 uppercase font-bold flex items-center gap-1 whitespace-nowrap">
                             <CalendarClock className="w-3 h-3" /> 关键事件雷达 (Catalyst)
                         </span>
-                        <div className="text-xs font-bold text-gray-200 mt-1 truncate max-w-[150px]">
+                        <div className="text-xs font-bold text-gray-200 mt-1 truncate" title={catalyst.nextEvent}>
                             {catalyst.nextEvent}
                         </div>
                     </div>
-                    <div className="text-right flex flex-col items-end">
-                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border mb-0.5 ${catalyst.eventImpact === 'High Volatility' ? 'text-orange-400 border-orange-500/30 bg-orange-900/10' : 'text-blue-400 border-blue-500/30'}`}>
+                    <div className="text-right flex flex-col items-end shrink-0 z-10">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border mb-0.5 whitespace-nowrap ${catalyst.eventImpact === 'High Volatility' ? 'text-orange-400 border-orange-500/30 bg-orange-900/10' : 'text-blue-400 border-blue-500/30'}`}>
                             {catalyst.eventImpact}
                         </span>
-                        <span className="text-[8px] text-gray-500">{catalyst.timingWarning}</span>
+                        <span className="text-[8px] text-gray-500 max-w-[100px] truncate">{catalyst.timingWarning}</span>
                     </div>
                 </div>
             )}

@@ -97,7 +97,7 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
 
   try {
       const prompt = `
-        Role: Gemini 2.5 Flash (Financial Data Specialist).
+        Role: Gemini 3 Pro (Financial Data Specialist).
         Task: Identify the correct trading symbol and name for: "${query}".
         
         **CRITICAL RULES FOR MARKET DETECTION**:
@@ -111,10 +111,10 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
         3. **Crypto**: "BINANCE:BTCUSDT".
         
         **OUTPUT REQUIREMENT**:
-        - Name: Prefer Chinese name if available (e.g., "贵州茅台 (Kweichow Moutai)" or "苹果 (Apple)").
+        - Name: **MUST BE IN CHINESE** if the company is Chinese or has a well-known Chinese name (e.g., "英伟达 (NVIDIA)", "贵州茅台", "腾讯控股").
         - Current Price: Real-time price if possible via search tool.
 
-        Output strictly JSON: { "symbol": "EXCHANGE:TICKER", "name": "Name String", "currentPrice": number }
+        Output strictly JSON: { "symbol": "EXCHANGE:TICKER", "name": "Name (Chinese Preferred)", "currentPrice": number }
       `;
 
       const result = await ai.models.generateContent({
@@ -271,6 +271,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       **STEP 4: FINAL EXECUTION MAP (The Output)**
       - Only populate "entryPrice", "stopLoss", and "takeProfit" based on the logic above.
       - **Entry Strategy**: Must specify "Breakout", "Retest", or "Limit Order".
+      - **IMPORTANT**: If SIGNAL is 'SELL', TakeProfit MUST be < Entry. If SIGNAL is 'BUY', TakeProfit MUST be > Entry.
       
       **PHASE 1: HARD DATA MINING (The "Truth" Layer)**
       You MUST use Google Search to find ACTUAL values.
@@ -283,7 +284,12 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       - IF US Stock AND Price > Max Pain: Logic is "Gamma Pinning" or "Mean Reversion".
       
       **OUTPUT FORMAT**: RAW JSON ONLY. NO MARKDOWN.
-      **LANGUAGE**: SIMPLIFIED CHINESE (简体中文). ALL OUTPUT TEXT MUST BE IN CHINESE.
+      **LANGUAGE REQUIREMENT**: 
+      1. **DESCRIPTIONS/REASONING**: MUST BE **SIMPLIFIED CHINESE (简体中文)**.
+      2. **ENUMS/LOGIC KEYS**: Keep logic identifiers (e.g. 'BUY', 'SELL', 'High') in ENGLISH for system parsing, OR use "English (Chinese)" format.
+      3. **SPECIFIC FIELDS**:
+         - \`smartMoneyAnalysis.retailSentiment\`: MUST be strictly "Greed", "Fear", or "Neutral".
+         - \`wyckoff.phase\`: Return full string like "Accumulation (吸筹)".
       
       ${marketSpecificProtocol}
       
@@ -314,13 +320,13 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "marketTribunal": {
             "bullCase": { "arguments": [{ "point": "string (中文)", "weight": "string" }], "verdict": "string (中文)" },
             "bearCase": { "arguments": [{ "point": "string (中文)", "weight": "string" }], "verdict": "string (中文)" },
-            "chiefJustice": { "winner": "string", "reasoning": "string (中文)", "confidenceAdjustment": number }
+            "chiefJustice": { "winner": "BULLS" | "BEARS" | "HUNG_JURY", "reasoning": "string (中文)", "confidenceAdjustment": number }
         },
         "volatilityAnalysis": { "vixValue": number, "atrState": "string (中文)", "regime": "string (中文)", "adaptiveStrategy": "string (中文)", "description": "string (中文)" },
         "optionsData": { "maxPainPrice": number, "gammaExposure": "string", "putCallRatio": number, "impliedVolatilityRank": "string", "squeezeRisk": "string" },
-        "sentimentDivergence": { "retailMood": "string", "institutionalAction": "string", "divergenceStatus": "string (中文)", "socialVolume": "string" },
+        "sentimentDivergence": { "retailMood": "string (e.g. Greed)", "institutionalAction": "string (e.g. Accumulation)", "divergenceStatus": "string (中文)", "socialVolume": "string" },
         "volumeProfile": { "hvnLevels": [number], "lvnZones": ["string"], "verdict": "string (中文)" },
-        "wyckoff": { "phase": "string", "event": "string", "analysis": "string (中文)" },
+        "wyckoff": { "phase": "string (e.g. Accumulation (吸筹))", "event": "string", "analysis": "string (中文)" },
         "smc": { "liquidityStatus": "string (中文)", "structure": "string", "fairValueGapStatus": "string (中文)" },
         "correlationMatrix": { "correlatedAsset": "string", "correlationType": "string", "correlationStrength": "string", "assetTrend": "string", "impact": "string (中文)" },
         "trendResonance": { "trendHTF": "string", "trendLTF": "string", "resonance": "string (中文)" },
@@ -333,7 +339,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         "entryPrice": number, "entryStrategy": "string (中文)", "takeProfit": number, "stopLoss": number, "supportLevel": number, "resistanceLevel": number, "riskRewardRatio": number, "reasoning": "string (中文)", "volatilityAssessment": "string (中文)", "marketStructure": "string (中文)",
         "technicalIndicators": { "rsi": number, "macdStatus": "string (中文)", "volumeStatus": "string (中文)" },
         "institutionalData": { "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string (中文)" },
-        "smartMoneyAnalysis": { "retailSentiment": "string", "smartMoneyAction": "string (中文)", "orderBlockStatus": "string (中文)" },
+        "smartMoneyAnalysis": { "retailSentiment": "Fear | Greed | Neutral", "smartMoneyAction": "string (中文)", "orderBlockStatus": "string (中文)" },
         "scenarios": {
             "bullish": { "probability": number, "targetPrice": number, "description": "string (中文)" },
             "bearish": { "probability": number, "targetPrice": number, "description": "string (中文)" },
@@ -445,10 +451,41 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             data.winRate = Math.max(0, Math.min(100, calculatedWinRate));
         }
 
+        // 5. Signal Sync
+        if (data.winRate >= 60) data.signal = SignalType.BUY;
+        else if (data.winRate <= 40) data.signal = SignalType.SELL;
+        else data.signal = SignalType.NEUTRAL;
+
+
+        // 6. LOGIC INTEGRITY CHECK (Fixing the user's issue about conflicting signals)
+        // Ensure Entry/TP/SL aligns with the Signal Direction
+        const currentP = data.realTimePrice || currentPrice;
+        
+        // If Entry is 0 or invalid, fix it
+        if (!data.entryPrice || data.entryPrice === 0) data.entryPrice = currentP;
+
+        if (data.signal === SignalType.BUY) {
+            // BUY Logic: TP > Entry > SL
+            if (data.takeProfit <= data.entryPrice) {
+                 data.takeProfit = Number((data.entryPrice * 1.06).toFixed(2)); // Force 6% upside
+            }
+            if (data.stopLoss >= data.entryPrice) {
+                 data.stopLoss = Number((data.entryPrice * 0.96).toFixed(2)); // Force 4% downside
+            }
+        } else if (data.signal === SignalType.SELL) {
+            // SELL Logic: SL > Entry > TP
+            if (data.takeProfit >= data.entryPrice) {
+                 data.takeProfit = Number((data.entryPrice * 0.94).toFixed(2)); // Force 6% downside
+            }
+            if (data.stopLoss <= data.entryPrice) {
+                 data.stopLoss = Number((data.entryPrice * 1.04).toFixed(2)); // Force 4% upside
+            }
+        }
+
         // === EXECUTION MAP GUARDRAILS (执行逻辑熔断) ===
 
         // 1. Risk/Reward Sanity Check
-        const entry = data.entryPrice || currentPrice;
+        const entry = data.entryPrice;
         const potentialProfit = Math.abs(data.takeProfit - entry);
         const potentialLoss = Math.abs(entry - data.stopLoss);
 
@@ -479,11 +516,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             if (data.winRate > 60) data.winRate = 55; // Cap win rate
             if (data.signal === SignalType.BUY) data.signal = SignalType.NEUTRAL; // Kill strong buy signals on divergence
         }
-
-        // 5. Signal Sync
-        if (data.winRate >= 60) data.signal = SignalType.BUY;
-        else if (data.winRate <= 40) data.signal = SignalType.SELL;
-        else data.signal = SignalType.NEUTRAL;
 
         return data as RealTimeAnalysis;
 
