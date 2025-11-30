@@ -1,18 +1,15 @@
-
-
 import { Timeframe, StockSymbol } from './types';
 
 export const DEFAULT_WATCHLIST: StockSymbol[] = [
-  { symbol: 'NYSE:BA', name: 'Boeing Co', currentPrice: 154.20 },
+  { symbol: 'SSE:600519', name: '贵州茅台 (Kweichow Moutai)', currentPrice: 1705.00 },
+  { symbol: 'SZSE:300750', name: '宁德时代 (CATL)', currentPrice: 195.50 },
   { symbol: 'NASDAQ:NVDA', name: 'NVIDIA Corp', currentPrice: 880.50 },
   { symbol: 'NASDAQ:TSLA', name: 'Tesla Inc', currentPrice: 175.30 },
   { symbol: 'NASDAQ:AAPL', name: 'Apple Inc', currentPrice: 170.10 },
   { symbol: 'NASDAQ:AMD', name: 'Advanced Micro Devices', currentPrice: 180.00 },
   { symbol: 'NASDAQ:MSFT', name: 'Microsoft Corp', currentPrice: 420.00 },
-  { symbol: 'NASDAQ:AMZN', name: 'Amazon.com Inc', currentPrice: 185.00 },
-  { symbol: 'NASDAQ:GOOGL', name: 'Alphabet Inc', currentPrice: 175.00 },
-  { symbol: 'NASDAQ:META', name: 'Meta Platforms', currentPrice: 500.00 },
   { symbol: 'NASDAQ:COIN', name: 'Coinbase Global', currentPrice: 250.00 },
+  { symbol: 'BINANCE:BTCUSDT', name: 'Bitcoin', currentPrice: 65000.00 },
 ];
 
 export const TIMEFRAMES = [

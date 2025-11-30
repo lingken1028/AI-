@@ -1,5 +1,3 @@
-
-
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 
@@ -81,16 +79,17 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
       console.warn("Using heuristic fallback for:", fallbackQuery);
       let cleanQuery = fallbackQuery.trim().toUpperCase();
       
-      if (cleanQuery === 'BTC') cleanQuery = 'BINANCE:BTCUSDT';
+      // Strict regex for A-Shares (6 digits)
+      if (/^\d{6}$/.test(cleanQuery)) {
+          if (cleanQuery.startsWith('6')) cleanQuery = `SSE:${cleanQuery}`; // Shanghai
+          else if (cleanQuery.startsWith('0') || cleanQuery.startsWith('3')) cleanQuery = `SZSE:${cleanQuery}`; // Shenzhen
+      }
+      else if (cleanQuery === 'BTC') cleanQuery = 'BINANCE:BTCUSDT';
       else if (cleanQuery === 'ETH') cleanQuery = 'BINANCE:ETHUSDT';
       else if (cleanQuery === 'SOL') cleanQuery = 'BINANCE:SOLUSDT';
       else if (cleanQuery === 'XAUUSD') cleanQuery = 'OANDA:XAUUSD';
-      else if (/^[0-9]{6}$/.test(cleanQuery)) {
-          if (cleanQuery.startsWith('6')) cleanQuery = `SSE:${cleanQuery}`; 
-          else cleanQuery = `SZSE:${cleanQuery}`; 
-      }
-      else if (!cleanQuery.includes(':') && /^[A-Z]+$/.test(cleanQuery)) {
-          cleanQuery = `NASDAQ:${cleanQuery}`;
+      else if (!cleanQuery.includes(':') && /^[A-Z]{1,5}$/.test(cleanQuery)) {
+          cleanQuery = `NASDAQ:${cleanQuery}`; // Default to NASDAQ for simple tickers
       }
       
       return { symbol: cleanQuery, name: cleanQuery, currentPrice: 0 };
@@ -98,29 +97,31 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
 
   try {
       const prompt = `
-        Role: Gemini 2.5 Flash (Fast Financial Data Assistant).
-        Task: Identify the correct stock symbol and company name for the user query: "${query}".
+        Role: Gemini 2.5 Flash (Financial Data Specialist).
+        Task: Identify the correct trading symbol and name for: "${query}".
         
-        Instructions:
-        1. Analyze the query to extract the intended financial asset.
-        2. Use Google Search to find the official trading ticker.
-        3. Return the symbol in standard TradingView format (EXCHANGE:TICKER).
-           Mapping Rules:
-           - 6 digits starting '6' -> "SSE:xxxxxx" (Shanghai).
-           - 6 digits starting '0'/'3' -> "SZSE:xxxxxx" (Shenzhen).
-           - HK stocks -> "HKEX:xxxx".
-           - Bitcoin/Crypto -> "BINANCE:BTCUSDT" format.
-           - Gold/Forex -> "OANDA:XAUUSD" or "FX:EURUSD".
-        4. Return full name (in Chinese if possible) and price.
+        **CRITICAL RULES FOR MARKET DETECTION**:
+        1. **China A-Shares (大A)**:
+           - Input is usually 6 digits (e.g., 600519, 300750) or Chinese name.
+           - Output format: "SSE:xxxxxx" (Shanghai) or "SZSE:xxxxxx" (Shenzhen).
+           - BE EXACT.
+        2. **US Stocks (美股)**:
+           - Input is 1-5 letters (e.g., AAPL, NVDA).
+           - Output format: "NASDAQ:TICKER" or "NYSE:TICKER".
+        3. **Crypto**: "BINANCE:BTCUSDT".
         
-        Output strictly JSON: { "symbol": "EXCHANGE:TICKER", "name": "Name", "currentPrice": number }
+        **OUTPUT REQUIREMENT**:
+        - Name: Prefer Chinese name if available (e.g., "贵州茅台 (Kweichow Moutai)" or "苹果 (Apple)").
+        - Current Price: Real-time price if possible via search tool.
+
+        Output strictly JSON: { "symbol": "EXCHANGE:TICKER", "name": "Name String", "currentPrice": number }
       `;
 
       const result = await ai.models.generateContent({
           model: 'gemini-2.5-flash', 
           contents: prompt,
           config: {
-            temperature: 0.1, 
+            temperature: 0.0, 
             tools: [{ googleSearch: {} }],
             safetySettings: [
               { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -138,17 +139,16 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
       if (!data.symbol || data.symbol === "null" || data.symbol === "NOT_FOUND") {
           throw new Error("AI could not identify symbol");
       }
-      
+
+      // Post-processing cleanup
       if (!data.symbol.includes(':')) {
         let cleanSymbol = data.symbol.replace(/\.SS$/, '').replace(/\.SH$/, '').replace(/\.SZ$/, '');
 
         if (cleanSymbol.match(/^[0-9]{6}$/)) {
             if (cleanSymbol.startsWith('6')) data.symbol = `SSE:${cleanSymbol}`;
             else data.symbol = `SZSE:${cleanSymbol}`;
-        } else if (data.symbol.match(/^[A-Z]{3,5}$/)) {
+        } else if (data.symbol.match(/^[A-Z]{1,5}$/)) {
              data.symbol = `NASDAQ:${data.symbol}`; 
-        } else if (data.symbol.includes('XAU')) {
-             data.symbol = `FX:${data.symbol}`;
         }
       }
 
@@ -179,38 +179,14 @@ const getPredictionHorizon = (tf: Timeframe): string => {
   }
 };
 
-// Helper: Determine Fractal Timeframes
-const getFractalTimeframes = (tf: Timeframe): { htf: string, ltf: string } => {
-    switch(tf) {
-        case Timeframe.M1: return { htf: 'M5', ltf: 'Tick Trend' };
-        case Timeframe.M3: return { htf: 'M15', ltf: 'M1' };
-        case Timeframe.M5: return { htf: 'M15', ltf: 'M1' };
-        case Timeframe.M15: return { htf: 'H1', ltf: 'M5' };
-        case Timeframe.M30: return { htf: 'H1', ltf: 'M5' };
-        case Timeframe.H1: return { htf: 'H4', ltf: 'M15' };
-        case Timeframe.H2: return { htf: 'D1', ltf: 'M30' };
-        case Timeframe.H4: return { htf: 'D1', ltf: 'H1' };
-        case Timeframe.D1: return { htf: 'Weekly', ltf: 'H4' };
-        default: return { htf: 'Higher Timeframe', ltf: 'Lower Timeframe' };
-    }
-}
-
-const getCorrelatedAssetHint = (symbol: string): string => {
-    if (symbol.includes('BTC') || symbol.includes('ETH')) return "Check DXY (Dollar Index) and NASDAQ correlation.";
-    if (symbol.includes('XAU') || symbol.includes('GOLD')) return "Check Real Yields and DXY.";
-    if (symbol.includes('NVDA') || symbol.includes('AMD')) return "Check SOXX (Semiconductor ETF) trend.";
-    if (symbol.startsWith('SSE') || symbol.startsWith('SZSE')) return "Check USD/CNY rate and FTSE China A50.";
-    return "Check major sector ETF or Index performance.";
-}
-
 export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, currentPrice: number, imageBase64?: string, isLockedPrice: boolean = false): Promise<RealTimeAnalysis> => {
     const ai = initAI();
     if (!ai) throw new Error("API Key not configured");
 
     const horizon = getPredictionHorizon(timeframe);
-    const fractal = getFractalTimeframes(timeframe);
     
     // --- 1. MARKET SEGMENTATION LOGIC ---
+    // Strict A-Share detection: SSE/SZSE prefix OR 6-digit code
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE') || /^[0-9]{6}$/.test(symbol.split(':')[1] || '');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
     const isForex = symbol.startsWith('FX') || symbol.startsWith('OANDA');
@@ -224,151 +200,147 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     // DYNAMIC TIMEFRAME CONTEXT
     const tfContext = timeframe === Timeframe.D1 ? "日线" : `${timeframe}级别`; 
     
-    // --- 2. SEARCH & PROMPT CONSTRUCTION ---
+    // --- 2. PROTOCOL INJECTION (Game Rules) ---
     let marketSpecificProtocol = "";
-    const correlationHint = getCorrelatedAssetHint(symbol);
-
+    
     if (isAShare) {
         marketSpecificProtocol = `
-            **MARKET PROTOCOL: CHINA A-SHARES (CN_ASHARE)**
-            1. POLICY: Prioritize Five-Year Plans/PBOC liquidity.
-            2. FUNDS: "Northbound Money" (北向) and "Main Force" (主力).
-            3. RULES: T+1, 10%/20% Limits. No Options/Max Pain analysis for A-Shares usually.
-            4. TERMS: Use "Dragon Return" (龙头反包), "Limit Up" (涨停).
-            5. CORRELATION: Check FTSE China A50 and USD/CNH.
+            **MODE: CHINA A-SHARES (大A模式 - CN_ASHARE)**
+            
+            **EXECUTION RULES (执行铁律)**:
+            1. **ENTRY (入场)**: 
+               - IF Price > +9.5% (Near Limit Up): Entry Strategy MUST be "排板 (Limit Order at Cap)" or "WAIT".
+               - IF Trend is weak: Entry MUST use "低吸 (Buy the Dip)" at key support, NO chasing breakouts (T+1 Risk).
+            2. **STOP LOSS (止损)**:
+               - **CRITICAL**: SL CANNOT be set below the -10% Limit Down price (Liquidity Lock Risk).
+               - SL must be tight to avoid getting locked overnight.
+            3. **DATA DRIVERS (核心驱动)**:
+               - **Northbound Funds (北向资金)**: The primary "Smart Money" indicator.
+               - **Main Force (主力资金)**: Domestic institutional large orders.
+               - **Concept Hype (题材)**: Focus on "Fengkou" (Wind Tunnel/Hot Concepts) and Policy (5-Year Plan).
+            4. **ANALYSIS PRIORITY**:
+               - Check if price is near Limit Up (涨停). If yes, analyze "Seal Strength" (封单强度).
+               - Focus on "Dragon Return" (龙头首阴/反包) patterns.
         `;
     } else if (isCrypto) {
          marketSpecificProtocol = `
-            **MARKET PROTOCOL: CRYPTO ASSETS**
-            1. DATA: Liquidation Heatmaps, Funding Rates, Open Interest, Stablecoin Inflows.
-            2. DERIVATIVES: Check Deribit Options for Max Pain (BTC/ETH).
-            3. TERMS: Use "Short Squeeze" (轧空), "Long Squeeze" (多杀多).
-            4. CORRELATION: High correlation with NASDAQ/S&P500 and Inverse DXY.
+            **MODE: CRYPTO ASSETS (加密货币)**
+            1. **MECHANICS**: 24/7 Trading, High Leverage, Liquidation Cascades.
+            2. **DATA**: Liquidation Heatmaps, Funding Rates, Stablecoin Inflows.
+            3. **DERIVATIVES**: Check Deribit Options (Max Pain) and Open Interest (OI).
+            4. **CORRELATION**: High correlation with NASDAQ and Inverse DXY.
         `;
     } else {
         marketSpecificProtocol = `
-            **MARKET PROTOCOL: US EQUITIES/GLOBAL**
-            1. DATA: Dark Pools, Options Gamma (GEX), Fed Policy, 10Y Yields.
-            2. DERIVATIVES (CRITICAL): Check Option "Max Pain" price and "Gamma Exposure".
-            3. TERMS: Use "Gamma Squeeze", "Institutional Accumulation".
-            4. CORRELATION: Check Sector ETF (e.g., XLK for Tech, XLF for Finance).
+            **MODE: US EQUITIES (美股模式 - US_EQUITY)**
+            
+            **EXECUTION RULES (执行铁律)**:
+            1. **ENTRY (入场)**:
+               - Check "Pre-Market" & "After-Hours" volume.
+               - Beware of "Opening Range Fakeout" (9:30-10:00 AM ET).
+            2. **STOP LOSS (止损)**:
+               - Must consider "Gamma Squeeze" volatility. Widen SL if IV (Implied Volatility) is high.
+            3. **KEY LEVELS**:
+               - **MANDATORY**: Check "Max Pain" price. Price often gravitates there on Fridays.
+               - **Gamma Exposure**: Identify the "Zero Gamma" level (Volatility Trigger).
+            4. **DATA DRIVERS**:
+               - **Options Gamma**: CRITICAL. Check "Max Pain" and "Gamma Exposure" (GEX).
+               - **Institutional Flow**: Dark Pool prints, 13F filings, Buybacks.
         `;
     }
 
     const systemPrompt = `
       You are **TradeGuard Pro**, an elite institutional trading AI.
       
-      **CORE DIRECTIVE**: THE FUNNEL OF TRUTH.
-      Your analysis must follow a strict "Funnel Structure". You must not just list data; you must CONVERGE data into a single point of execution.
+      **CORE ARCHITECTURE: THE EXECUTION FUNNEL**
+      You must follow a strict "Funnel Logic". You cannot generate the "Execution Map" until all other modules pass their checks.
       
-      **THE FUNNEL ARCHITECTURE**:
-      1. **Layer 1: The Context (Wide)** -> Volatility Regime, Macro Correlation, Sentiment.
-      2. **Layer 2: The Evidence (Narrowing)** -> Tribunal Debate, Institutional Mechanics, Trinity Consensus.
-      3. **Layer 3: The Deduction (Convergence)** -> Scenarios (Bull/Bear/Neutral).
-      4. **Layer 4: THE EXECUTION MAP (The Tip)** -> This is the FINAL OUTPUT. All previous layers exist ONLY to serve this map.
-         - *Entry* must be justified by Mechanics (Layer 2).
-         - *Stop Loss* must be justified by Volatility (Layer 1).
-         - *Take Profit* must be justified by Scenarios (Layer 3).
+      **STEP 1: TRINITY CONSENSUS (Direction Filter)**
+      - Analyze Technicals, Flow, and Sentiment.
+      - **CONSTRAINT**: If Technicals say BUY but Institutional Flow says SELL, the Signal MUST be "NEUTRAL". Do not force a trade.
       
-      **OUTPUT FORMAT**: RAW JSON ONLY. NO MARKDOWN. NO EXPLANATORY TEXT.
-      **LANGUAGE**: SIMPLIFIED CHINESE (简体中文). Translate all terms, including "Strategy Identity".
+      **STEP 2: RED TEAMING (Risk Filter)**
+      - Ask: "Where does this trade fail?" (The Invalidation Point).
+      - **CONSTRAINT**: Your **Stop Loss** MUST be placed slightly beyond this Invalidation Point. It cannot be arbitrary.
+      
+      **STEP 3: SCENARIO MAPPING (Target Filter)**
+      - **TP1 (Conservative)**: Must align with the "Neutral Scenario" resistance.
+      - **TP2 (Standard)**: Must align with the "Bullish Scenario" structural high.
+      - **TP3 (Moonbag)**: Fibonacci extension or "Blue Sky" setup.
+
+      **STEP 4: FINAL EXECUTION MAP (The Output)**
+      - Only populate "entryPrice", "stopLoss", and "takeProfit" based on the logic above.
+      - **Entry Strategy**: Must specify "Breakout", "Retest", or "Limit Order".
+      
+      **PHASE 1: HARD DATA MINING (The "Truth" Layer)**
+      You MUST use Google Search to find ACTUAL values.
+      - **A-Shares**: Search "北向资金 ${symbol}", "主力资金流向 ${symbol}", "涨停分析 ${symbol}".
+      - **US Stocks**: Search "Gamma Exposure ${symbol}", "Max Pain ${symbol}", "Dark Pool ${symbol}".
+      - **General**: RSI, Market Cap, PE Ratio.
+      
+      **PHASE 2: STRATEGY SYNTHESIS**
+      - IF A-Share AND Price near +10%: Logic is "Da Ban" (打板). Verify Seal Strength.
+      - IF US Stock AND Price > Max Pain: Logic is "Gamma Pinning" or "Mean Reversion".
+      
+      **OUTPUT FORMAT**: RAW JSON ONLY. NO MARKDOWN.
+      **LANGUAGE**: SIMPLIFIED CHINESE (简体中文). ALL OUTPUT TEXT MUST BE IN CHINESE.
       
       ${marketSpecificProtocol}
       
-      **THINKING MODEL UPGRADE**:
-      
-      1. **VOLATILITY REGIME (Layer 1)**:
-         - IF Choppy: Strategy = Mean Reversion.
-         - IF Trending: Strategy = Trend Following.
-         - *This dictates the Strategy Identity in the Execution Map.*
-      
-      2. **ADVERSARIAL TRIBUNAL (Layer 2)**:
-         - Use the "Winner" of the debate to bias the Trinity Consensus Score.
-      
-      3. **TRADING SETUP & EXECUTION MAP (Layer 4 - CRITICAL)**:
-         - "strategyIdentity": Must be specific and in Chinese (e.g., "威科夫弹簧反转" or "Gamma挤压突破").
-         - "confirmationTriggers": List 3 specific things to watch for (e.g., "Volume spike > 20k", "Close above VWAP").
-         - "invalidationPoint": The exact price logic where the thesis fails.
-      
-      **PRICE HANDLING**:
-      ${isLockedPrice 
-        ? `>>> USER LOCKED PRICE AT ${currentPrice}. DO NOT UPDATE IT. All levels (TP/SL) must be calculated relative to ${currentPrice}.` 
-        : `Use ${currentPrice} as reference. If Google Search shows a newer price, USE THE NEW PRICE and update 'realTimePrice'.`
-      }
-      
-      Output JSON Schema (Maintain strict Chinese strings):
+      Output JSON Schema (Strict):
       {
         "signal": "BUY" | "SELL" | "NEUTRAL",
         "marketContext": "${marketContext}",
         "realTimePrice": number,
-        "scoreDrivers": {
-            "technical": number, "institutional": number, "sentiment": number, "macro": number 
+        "scoreDrivers": { "technical": number, "institutional": number, "sentiment": number, "macro": number },
+        "hardData": {
+            "realTimeRsi": number,
+            "rsiStatus": "string (中文)",
+            "peRatio": number,
+            "pbRatio": number,
+            "marketCap": "string",
+            "fiftyTwoWeekRange": "string",
+            "volume24h": "string",
+            "dataSource": "string"
+        },
+        "socialAnalysis": {
+            "retailScore": number,
+            "institutionalScore": number,
+            "socialVolume": "string",
+            "trendingKeywords": ["string"],
+            "sentimentVerdict": "string (中文)",
+            "sources": ["string"]
         },
         "marketTribunal": {
-            "bullCase": { "arguments": [{ "point": "string", "weight": "High" | "Medium" | "Low" }], "verdict": "string" },
-            "bearCase": { "arguments": [{ "point": "string", "weight": "High" | "Medium" | "Low" }], "verdict": "string" },
-            "chiefJustice": { "winner": "BULLS" | "BEARS" | "HUNG_JURY", "reasoning": "string", "confidenceAdjustment": number }
+            "bullCase": { "arguments": [{ "point": "string (中文)", "weight": "string" }], "verdict": "string (中文)" },
+            "bearCase": { "arguments": [{ "point": "string (中文)", "weight": "string" }], "verdict": "string (中文)" },
+            "chiefJustice": { "winner": "string", "reasoning": "string (中文)", "confidenceAdjustment": number }
         },
-        "volatilityAnalysis": {
-            "vixValue": number,
-            "atrState": "Expanding (扩张)" | "Contracting (收缩)" | "Stable (稳定)",
-            "regime": "High Volatility (高波动/趋势)" | "Low Volatility (低波动/震荡)" | "Extreme (极端/崩盘)",
-            "adaptiveStrategy": "Trend Following (趋势跟随)" | "Mean Reversion (均值回归/高抛低吸)" | "Breakout (突破)" | "Defensive (防御/观望)",
-            "description": "string"
-        },
-        "optionsData": {
-            "maxPainPrice": number,
-            "gammaExposure": "Long Gamma (Volatility Suppression)" | "Short Gamma (Volatility Acceleration)" | "Neutral",
-            "putCallRatio": number,
-            "impliedVolatilityRank": "string",
-            "squeezeRisk": "High" | "Moderate" | "Low"
-        },
-        "sentimentDivergence": {
-            "retailMood": "Extreme Greed" | "Greed" | "Neutral" | "Fear" | "Extreme Fear",
-            "institutionalAction": "Aggressive Buying" | "Accumulation" | "Neutral" | "Distribution" | "Panic Selling",
-            "divergenceStatus": "Bullish Divergence (Retail Fear / Inst Buy)" | "Bearish Divergence (Retail Greed / Inst Sell)" | "Aligned (Trend)",
-            "socialVolume": "Exploding" | "High" | "Normal" | "Low"
-        },
-        "volumeProfile": {
-            "hvnLevels": [number],
-            "lvnZones": ["string"],
-            "verdict": "Overhead Supply (上方套牢盘)" | "Strong Support Base (底部筹码峰)" | "Vacuum Acceleration (真空加速)"
-        },
-        "wyckoff": {
-            "phase": "Accumulation (吸筹)" | "Markup (拉升)" | "Distribution (派发)" | "Markdown (砸盘)",
-            "event": "Spring (弹簧/假跌破)" | "Upthrust (上冲回落/假突破)" | "SOS (强势信号)" | "SOW (弱势信号)" | "None",
-            "analysis": "string"
-        },
-        "smc": {
-            "liquidityStatus": "Swept Liquidity (掠夺流动性)" | "Building Liquidity (堆积流动性)" | "Neutral",
-            "structure": "BOS (结构破坏)" | "CHoCH (角色互换)" | "None",
-            "fairValueGapStatus": "string"
-        },
-        "correlationMatrix": {
-            "correlatedAsset": "string", "correlationType": "Positive (正相关)" | "Negative (负相关)", "correlationStrength": "High" | "Moderate" | "Low", "assetTrend": "Bullish" | "Bearish" | "Neutral", "impact": "Tailwind (助推)" | "Headwind (阻力)" | "Neutral"
-        },
-        "trendResonance": {
-            "trendHTF": "Bullish" | "Bearish" | "Neutral", "trendLTF": "Bullish" | "Bearish" | "Neutral", "resonance": "Resonant (顺势)" | "Conflict (逆势/回调)" | "Chaos (震荡)"
-        },
-        "catalystRadar": { "nextEvent": "string", "eventImpact": "High Volatility" | "Medium" | "Low", "timingWarning": "string" },
-        "trinityConsensus": {
-            "quantScore": number, "smartMoneyScore": number, "chartPatternScore": number, "consensusVerdict": "STRONG_CONFLUENCE (强共振)" | "MODERATE (一般)" | "DIVERGENCE (背离)"
-        },
-        "visualAnalysis": "string",
-        "dataMining": { "sourcesCount": number, "confidenceLevel": "High" | "Medium" | "Low", "keyDataPoints": ["string"], "contradictions": ["string"] },
+        "volatilityAnalysis": { "vixValue": number, "atrState": "string (中文)", "regime": "string (中文)", "adaptiveStrategy": "string (中文)", "description": "string (中文)" },
+        "optionsData": { "maxPainPrice": number, "gammaExposure": "string", "putCallRatio": number, "impliedVolatilityRank": "string", "squeezeRisk": "string" },
+        "sentimentDivergence": { "retailMood": "string", "institutionalAction": "string", "divergenceStatus": "string (中文)", "socialVolume": "string" },
+        "volumeProfile": { "hvnLevels": [number], "lvnZones": ["string"], "verdict": "string (中文)" },
+        "wyckoff": { "phase": "string", "event": "string", "analysis": "string (中文)" },
+        "smc": { "liquidityStatus": "string (中文)", "structure": "string", "fairValueGapStatus": "string (中文)" },
+        "correlationMatrix": { "correlatedAsset": "string", "correlationType": "string", "correlationStrength": "string", "assetTrend": "string", "impact": "string (中文)" },
+        "trendResonance": { "trendHTF": "string", "trendLTF": "string", "resonance": "string (中文)" },
+        "catalystRadar": { "nextEvent": "string (中文)", "eventImpact": "string", "timingWarning": "string (中文)" },
+        "trinityConsensus": { "quantScore": number, "smartMoneyScore": number, "chartPatternScore": number, "consensusVerdict": "string (中文)" },
+        "visualAnalysis": "string (中文)",
+        "dataMining": { "sourcesCount": number, "confidenceLevel": "string", "keyDataPoints": ["string (中文)"], "contradictions": ["string (中文)"] },
         "winRate": number, 
         "historicalWinRate": number, 
-        "entryPrice": number, "entryStrategy": "string", "takeProfit": number, "stopLoss": number, "supportLevel": number, "resistanceLevel": number, "riskRewardRatio": number, "reasoning": "string", "volatilityAssessment": "string", "marketStructure": "string",
-        "technicalIndicators": { "rsi": number, "macdStatus": "string", "volumeStatus": "string" },
-        "institutionalData": { "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string" },
-        "smartMoneyAnalysis": { "retailSentiment": "Fear" | "Greed" | "Neutral", "smartMoneyAction": "string", "orderBlockStatus": "string" },
+        "entryPrice": number, "entryStrategy": "string (中文)", "takeProfit": number, "stopLoss": number, "supportLevel": number, "resistanceLevel": number, "riskRewardRatio": number, "reasoning": "string (中文)", "volatilityAssessment": "string (中文)", "marketStructure": "string (中文)",
+        "technicalIndicators": { "rsi": number, "macdStatus": "string (中文)", "volumeStatus": "string (中文)" },
+        "institutionalData": { "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string (中文)" },
+        "smartMoneyAnalysis": { "retailSentiment": "string", "smartMoneyAction": "string (中文)", "orderBlockStatus": "string (中文)" },
         "scenarios": {
-            "bullish": { "probability": number, "targetPrice": number, "description": "string" },
-            "bearish": { "probability": number, "targetPrice": number, "description": "string" },
-            "neutral": { "probability": number, "targetPrice": number, "description": "string" }
+            "bullish": { "probability": number, "targetPrice": number, "description": "string (中文)" },
+            "bearish": { "probability": number, "targetPrice": number, "description": "string (中文)" },
+            "neutral": { "probability": number, "targetPrice": number, "description": "string (中文)" }
         },
-        "tradingSetup": { "strategyIdentity": "string", "confirmationTriggers": ["string"], "invalidationPoint": "string" },
-        "redTeaming": { "risks": ["string"], "mitigations": ["string"], "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL", "stressTest": "string" },
+        "tradingSetup": { "strategyIdentity": "string (中文)", "confirmationTriggers": ["string (中文)"], "invalidationPoint": "string (中文)" },
+        "redTeaming": { "risks": ["string (中文)"], "mitigations": ["string (中文)"], "severity": "string", "stressTest": "string (中文)" },
         "modelFusionConfidence": number, 
         "futurePrediction": { "targetHigh": number, "targetLow": number, "confidence": number }
       }
@@ -377,26 +349,18 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     const userPromptText = `
       Analyze ${symbol} on ${timeframe} (${tfContext}). Reference Price: ${currentPrice}.
       
-      **FRACTAL CONTEXT**:
-      - Higher Timeframe (Trend): ${fractal.htf}
-      - Lower Timeframe (Entry): ${fractal.ltf}
+      **MANDATORY CHECKS**:
+      1. **Market Type**: Confirm if this is A-Share (T+1) or US (T+0).
+      2. **Limit Status** (A-Share Only): Is it near Limit Up/Down?
+      3. **Northbound/Dark Pool**: Report the correct institutional flow based on market type.
       
-      **REQUIRED SEARCH TASKS (DEEP DIVE)**:
-      1. **Volatility Regime**: Search for "VIX today", "${symbol} historical volatility", or visually analyze candle ranges.
-         *DETERMINE IF CHOPPY OR TRENDING*.
-      2. **Options/Gamma**: Search for "${symbol} option max pain this week", "${symbol} gamma exposure GEX", "${symbol} put call ratio".
-      3. **Sentiment Divergence**: Search for "${symbol} retail sentiment reddit" AND "${symbol} institutional net flow 13F".
-         *Compare them specifically for divergence*.
-      
-      STRICT INSTRUCTION:
-      1. If Volatility is LOW (Choppy), force strategy to "Mean Reversion". DO NOT SUGGEST BREAKOUTS.
-      2. If Retail is "Greedy" but Smart Money is "Selling", MARK AS BEARISH DIVERGENCE.
-      3. SYNTHESIZE EVERYTHING into the "tradingSetup" (Execution Map).
-      4. Return RAW JSON ONLY.
+      Synthesize all data into the JSON schema, ensuring EXECUTION MAP follows the FUNNEL LOGIC.
     `;
 
+    // Use gemini-3-pro-preview for both text and multimodal analysis as it supports reasoning + vision + tools.
+    // gemini-3-pro-image-preview is typically for Generation, though sometimes used for Vision, 3-pro-preview is safer for complex analysis.
     const requestContents: any = {
-      model: imageBase64 ? 'gemini-3-pro-image-preview' : 'gemini-3-pro-preview', 
+      model: 'gemini-3-pro-preview', 
       config: {
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
@@ -424,7 +388,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
         const data = cleanAndParseJSON(result.text);
 
-        // --- THE SANITIZER: Strict Logic & Type Enforcement ---
+        // --- SANITIZER & LOGIC GATES ---
         
         // 1. Defaults
         const baseScore = data.winRate || 50;
@@ -434,21 +398,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         ['realTimePrice', 'entryPrice', 'takeProfit', 'stopLoss', 'supportLevel', 'resistanceLevel'].forEach(key => {
             data[key] = parsePrice(data[key]);
         });
-
-        // 2.1 Volume Profile Parsing
-        if (data.volumeProfile) {
-            if (data.volumeProfile.hvnLevels) {
-                data.volumeProfile.hvnLevels = data.volumeProfile.hvnLevels.map((v:any) => parsePrice(v));
-            } else {
-                data.volumeProfile.hvnLevels = [];
-            }
-        }
-
-        // 2.2 Options Parsing (Safe defaults)
-        if (data.optionsData) {
-            data.optionsData.maxPainPrice = parsePrice(data.optionsData.maxPainPrice);
-            data.optionsData.putCallRatio = parsePrice(data.optionsData.putCallRatio);
-        }
         
         // 3. Scenario Logic Correction
         if (data.scenarios) {
@@ -459,103 +408,76 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             bearish.targetPrice = parsePrice(bearish.targetPrice);
             neutral.targetPrice = parsePrice(neutral.targetPrice);
             
-            // Auto-Fix Inverted Targets
-            if (bullish.targetPrice < currentP && bearish.targetPrice > currentP) {
-                // Swap them if AI got confused
-                const temp = bullish.targetPrice;
-                bullish.targetPrice = bearish.targetPrice;
-                bearish.targetPrice = temp;
-            }
-            
-            // Hard Constraints
             if (bullish.targetPrice <= currentP) bullish.targetPrice = currentP * 1.025; 
             if (bearish.targetPrice >= currentP) bearish.targetPrice = currentP * 0.975; 
             
-            // Probability Normalization
-            const bProb = bullish.probability || 0;
-            const beProb = bearish.probability || 0;
-            const nProb = neutral.probability || 0;
-            const total = bProb + beProb + nProb;
-            
-            if (total !== 100) {
-                if (total === 0) {
-                     bullish.probability = 33; bearish.probability = 33; neutral.probability = 34;
-                } else {
-                     bullish.probability = Math.round((bProb / total) * 100);
-                     bearish.probability = Math.round((beProb / total) * 100);
-                     neutral.probability = 100 - bullish.probability - bearish.probability;
-                }
+            // Normalize Probabilities
+            const total = (bullish.probability || 0) + (bearish.probability || 0) + (neutral.probability || 0);
+            if (total > 0 && total !== 100) {
+                 bullish.probability = Math.round((bullish.probability / total) * 100);
+                 bearish.probability = Math.round((bearish.probability / total) * 100);
+                 neutral.probability = 100 - bullish.probability - bearish.probability;
             }
         }
 
-        // 4. Trinity Consensus Logic with Correlation Penalty
+        // 4. Trinity Consensus Logic
         if (data.trinityConsensus) {
             const { quantScore, smartMoneyScore, chartPatternScore } = data.trinityConsensus;
             let calculatedWinRate = Math.round((quantScore * 0.35) + (smartMoneyScore * 0.35) + (chartPatternScore * 0.3));
             
-            // Penalties for Divergence
+            // Penalties
             if (Math.abs(quantScore - smartMoneyScore) > 30) {
                  calculatedWinRate -= 10;
                  data.trinityConsensus.consensusVerdict = 'DIVERGENCE (背离)';
             }
-            // Logic Guardrail 1: Correlation Check
-            if (data.correlationMatrix && data.correlationMatrix.impact === 'Headwind (阻力)') {
-                calculatedWinRate -= 15; // Significant penalty for fighting the macro trend
-            }
-            
-            // Logic Guardrail 2: Fractal Conflict Check (Explicit User Request)
-            if (data.trendResonance && data.trendResonance.resonance === 'Conflict (逆势/回调)') {
-                // FORCE CAP at 70% for counter-trend trades as requested
-                if (calculatedWinRate > 70) calculatedWinRate = 70;
-            }
+            if (data.correlationMatrix?.impact === 'Headwind (阻力)') calculatedWinRate -= 15;
+            if (data.trendResonance?.resonance === 'Conflict (逆势/回调)') if (calculatedWinRate > 70) calculatedWinRate = 70;
 
-            // Logic Guardrail 3: Wyckoff Distribution Override (NEW)
-            if (data.wyckoff && data.wyckoff.phase.includes('Distribution')) {
-                 // In Distribution, RSI Oversold is a TRAP. Cap win rate for buys.
-                 if (calculatedWinRate > 60) calculatedWinRate = 60;
-            }
-
-            // Logic Guardrail 4: Volume Profile Resistance Override (NEW)
-            if (data.volumeProfile && data.volumeProfile.verdict.includes('Overhead Supply')) {
-                 if (calculatedWinRate > 65) calculatedWinRate = 65;
-            }
-            
-            // Logic Guardrail 5: Tribunal Verdict Check
-            if (data.marketTribunal && data.marketTribunal.chiefJustice) {
+            // Strict Tribunal Check
+            if (data.marketTribunal?.chiefJustice) {
                 const { winner, confidenceAdjustment } = data.marketTribunal.chiefJustice;
                 const adj = typeof confidenceAdjustment === 'number' ? confidenceAdjustment : 0;
-                
                 calculatedWinRate += adj;
-
-                // Strong Check: If Judge says BEARS but rate is high, punish heavily
-                if (winner === 'BEARS' && calculatedWinRate > 55) {
-                    calculatedWinRate = Math.max(45, calculatedWinRate - 20);
-                }
-                // If Judge says BULLS but rate is low, boost slightly
-                if (winner === 'BULLS' && calculatedWinRate < 45) {
-                    calculatedWinRate = Math.min(55, calculatedWinRate + 20);
-                }
-            }
-            
-            // Logic Guardrail 6: Sentiment Divergence Penalty (NEW)
-            if (data.sentimentDivergence && data.sentimentDivergence.divergenceStatus.includes('Bearish Divergence')) {
-                 // Retail Greed + Inst Sell = Trap. Reduce Win Rate severely.
-                 calculatedWinRate -= 20;
-                 data.signal = SignalType.NEUTRAL; // Downgrade Signal
+                if (winner === 'BEARS' && calculatedWinRate > 55) calculatedWinRate = Math.max(45, calculatedWinRate - 20);
+                if (winner === 'BULLS' && calculatedWinRate < 45) calculatedWinRate = Math.min(55, calculatedWinRate + 20);
             }
 
-            // Logic Guardrail 7: Volatility Mismatch Penalty (NEW)
-            if (data.volatilityAnalysis) {
-                const regime = data.volatilityAnalysis.regime;
-                const strategy = data.volatilityAnalysis.adaptiveStrategy;
-                // If Low Volatility but strategy suggests Breakout? Penalize.
-                if (regime.includes('Low') && strategy.includes('Breakout')) {
-                    calculatedWinRate -= 20;
-                    data.reasoning += " [RISK: Breakout in Low Volatility = Trap]";
-                }
-            }
-            
             data.winRate = Math.max(0, Math.min(100, calculatedWinRate));
+        }
+
+        // === EXECUTION MAP GUARDRAILS (执行逻辑熔断) ===
+
+        // 1. Risk/Reward Sanity Check
+        const entry = data.entryPrice || currentPrice;
+        const potentialProfit = Math.abs(data.takeProfit - entry);
+        const potentialLoss = Math.abs(entry - data.stopLoss);
+
+        if (potentialLoss > 0 && potentialProfit < potentialLoss * 0.9) {
+            console.warn("AI Logic Risk: RR Ratio < 1. Forcing Neutral.");
+            data.signal = SignalType.NEUTRAL;
+            if (data.winRate > 50) data.winRate = 50;
+            data.reasoning += "\n[系统风控拦截] 预期盈亏比小于 1:1 (Risk/Reward < 1)，系统强制转为观望。";
+        }
+
+        // 2. A-Share Limit Protection
+        if (isAShare) {
+            const limitUp = currentPrice * 1.1;
+            const limitDown = currentPrice * 0.9;
+            
+            // If entry is higher than limit up, cap it
+            if (data.entryPrice > limitUp) data.entryPrice = Number(limitUp.toFixed(2));
+            
+            // Stop loss below limit down is dangerous
+            if (data.stopLoss < limitDown) {
+                data.stopLoss = Number((limitDown * 1.01).toFixed(2));
+                data.reasoning += "\n[A股风控] 止损已调整至跌停板上方以确保流动性 (Liquidity Protection)。";
+            }
+        }
+
+        // 3. Final Divergence Check
+        if (data.trinityConsensus?.consensusVerdict === 'DIVERGENCE (背离)') {
+            if (data.winRate > 60) data.winRate = 55; // Cap win rate
+            if (data.signal === SignalType.BUY) data.signal = SignalType.NEUTRAL; // Kill strong buy signals on divergence
         }
 
         // 5. Signal Sync

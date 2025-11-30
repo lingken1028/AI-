@@ -1,9 +1,7 @@
-
-
 import React, { useState, useEffect } from 'react';
-import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining, CorrelationMatrix, CatalystRadar, TrendResonance, MarketTribunal, TribunalArgument, WyckoffData, VolumeProfile, SMCData, OptionsData, SentimentDivergence, VolatilityAnalysis } from '../types';
+import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining, CorrelationMatrix, CatalystRadar, TrendResonance, MarketTribunal, TribunalArgument, WyckoffData, VolumeProfile, SMCData, OptionsData, SentimentDivergence, VolatilityAnalysis, HardData, SocialAnalysis } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark, Sparkles, Link2, CalendarClock, ArrowBigUp, ArrowBigDown, Gavel, Scale as ScaleIcon, ThumbsUp, ThumbsDown, AlertCircle, BarChart, Magnet, ZapOff, Waves, ArrowDown, Map } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark, Sparkles, Link2, CalendarClock, ArrowBigUp, ArrowBigDown, Gavel, Scale as ScaleIcon, ThumbsUp, ThumbsDown, AlertCircle, BarChart, Magnet, ZapOff, Waves, ArrowDown, Map, CheckCircle, Filter } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -24,12 +22,9 @@ const Typewriter = ({ text, speed = 10 }: { text: string; speed?: number }) => {
     }
     
     let i = 0;
-    // Reset immediately
     setDisplayedText('');
     
     const timer = setInterval(() => {
-      // Use slice (deterministic) instead of appending (state-dependent)
-      // This prevents "double typing" issues in React Strict Mode
       setDisplayedText(text.slice(0, i));
       i++;
       if (i > text.length) {
@@ -102,14 +97,149 @@ const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string,
     );
 };
 
+// NEW: Hard Data Validation Panel
+const HardDataPanel = ({ data, marketContext }: { data: HardData, marketContext?: string }) => {
+    if (!data) return null;
+    
+    // Dynamic Labels based on Market Context
+    const isAShare = marketContext === 'CN_ASHARE';
+
+    return (
+        <div className="bg-[#0b1215] rounded-xl border border-gray-800 mb-4 overflow-hidden shadow-inner group">
+             {/* Header */}
+             <div className="bg-[#151c24] px-4 py-2 flex items-center justify-between border-b border-gray-800">
+                 <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                     <Database className="w-3 h-3 text-blue-500" /> 硬数据验证 (Quant Validation)
+                 </h3>
+                 <div className="flex items-center gap-1 bg-green-900/20 px-2 py-0.5 rounded border border-green-500/20">
+                     <CheckCircle className="w-3 h-3 text-green-500" />
+                     <span className="text-[9px] text-green-400 font-bold uppercase">{data.dataSource}</span>
+                 </div>
+             </div>
+
+             {/* Grid */}
+             <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-gray-800 border-b border-gray-800">
+                 {/* RSI */}
+                 <div className="p-3 text-center">
+                     <div className="text-[9px] text-gray-500 uppercase font-bold mb-1">RSI (14)</div>
+                     <div className={`text-lg font-mono font-bold ${data.realTimeRsi > 70 ? 'text-red-400' : data.realTimeRsi < 30 ? 'text-green-400' : 'text-blue-300'}`}>
+                         {data.realTimeRsi.toFixed(1)}
+                     </div>
+                     <div className="text-[9px] text-gray-600">{data.rsiStatus}</div>
+                 </div>
+
+                 {/* PE Ratio */}
+                 <div className="p-3 text-center">
+                     <div className="text-[9px] text-gray-500 uppercase font-bold mb-1">
+                        {isAShare ? '市盈率 (PE-TTM)' : 'PE Ratio (TTM)'}
+                     </div>
+                     <div className="text-lg font-mono font-bold text-white">{data.peRatio > 0 ? data.peRatio.toFixed(2) : '-'}</div>
+                     <div className="text-[9px] text-gray-600">Valuation</div>
+                 </div>
+
+                 {/* Market Cap */}
+                 <div className="p-3 text-center">
+                     <div className="text-[9px] text-gray-500 uppercase font-bold mb-1">
+                        {isAShare ? '总市值 (Total Cap)' : 'Market Cap'}
+                     </div>
+                     <div className="text-sm font-mono font-bold text-white mt-1">{data.marketCap}</div>
+                 </div>
+
+                 {/* PB Ratio */}
+                 <div className="p-3 text-center">
+                     <div className="text-[9px] text-gray-500 uppercase font-bold mb-1">PB Ratio</div>
+                     <div className="text-lg font-mono font-bold text-white">{data.pbRatio > 0 ? data.pbRatio.toFixed(2) : '-'}</div>
+                 </div>
+             </div>
+             
+             {/* 52W Range Bar */}
+             <div className="px-4 py-3 bg-[#0f151a]">
+                  <div className="flex justify-between text-[9px] text-gray-500 mb-1 font-mono">
+                      <span>52W Low</span>
+                      <span className="text-gray-400 font-bold">{data.fiftyTwoWeekRange}</span>
+                      <span>52W High</span>
+                  </div>
+                  <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden relative">
+                      <div className="absolute left-[20%] right-[30%] h-full bg-blue-500/30 rounded-full"></div>
+                  </div>
+             </div>
+        </div>
+    );
+};
+
+// NEW: Social Sentiment Radar
+const SocialRadarPanel = ({ social }: { social: SocialAnalysis }) => {
+    if (!social) return null;
+
+    const isDivergence = Math.abs(social.retailScore - social.institutionalScore) > 40;
+
+    return (
+        <div className="bg-[#0b1215] rounded-xl border border-gray-800 mb-4 overflow-hidden relative group">
+             {/* Background Effect */}
+             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent opacity-50"></div>
+             
+             <div className="p-4 relative z-10">
+                 <div className="flex justify-between items-start mb-4">
+                     <div>
+                        <h3 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                            <Radio className="w-3 h-3 text-purple-500 animate-pulse" /> 舆情雷达 (Social Radar)
+                        </h3>
+                        <p className="text-[9px] text-gray-600 mt-0.5">Aggregated from {social.sources.join(', ')}</p>
+                     </div>
+                     <div className={`px-2 py-1 rounded text-[9px] font-bold border ${isDivergence ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' : 'bg-gray-800 text-gray-400 border-gray-700'}`}>
+                         {social.sentimentVerdict}
+                     </div>
+                 </div>
+
+                 {/* Dual Bar Comparison */}
+                 <div className="space-y-4 mb-4">
+                     {/* Retail */}
+                     <div>
+                         <div className="flex justify-between text-[9px] text-gray-500 uppercase font-bold mb-1">
+                             <span className="flex items-center gap-1"><Users className="w-3 h-3" /> Retail (散户)</span>
+                             <span className={`${social.retailScore > 70 ? 'text-red-400' : 'text-gray-400'}`}>{social.retailScore}% (Greed)</span>
+                         </div>
+                         <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+                             <div 
+                                className={`h-full rounded-full transition-all duration-1000 ${social.retailScore > 75 ? 'bg-red-500' : 'bg-gray-500'}`} 
+                                style={{ width: `${social.retailScore}%` }}
+                             ></div>
+                         </div>
+                     </div>
+
+                     {/* Institutional */}
+                     <div>
+                         <div className="flex justify-between text-[9px] text-gray-500 uppercase font-bold mb-1">
+                             <span className="flex items-center gap-1"><Landmark className="w-3 h-3" /> Smart Money (主力)</span>
+                             <span className={`${social.institutionalScore > 60 ? 'text-green-400' : 'text-gray-400'}`}>{social.institutionalScore}% (Accumulation)</span>
+                         </div>
+                         <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
+                             <div 
+                                className={`h-full rounded-full transition-all duration-1000 ${social.institutionalScore > 60 ? 'bg-green-500' : 'bg-blue-500'}`} 
+                                style={{ width: `${social.institutionalScore}%` }}
+                             ></div>
+                         </div>
+                     </div>
+                 </div>
+
+                 {/* Tags */}
+                 <div className="flex flex-wrap gap-2">
+                     <span className="text-[9px] text-gray-500 font-bold uppercase py-0.5">Hot Topics:</span>
+                     {social.trendingKeywords.map((tag, i) => (
+                         <span key={i} className="text-[9px] px-1.5 py-0.5 bg-gray-800 text-gray-300 rounded border border-gray-700">#{tag}</span>
+                     ))}
+                 </div>
+             </div>
+        </div>
+    );
+};
+
 // NEW: Volatility Regime Card
 const VolatilityRegimeCard = ({ volatility }: { volatility?: VolatilityAnalysis }) => {
     if (!volatility) return null;
 
     const isHighVol = volatility.regime.includes('High') || volatility.regime.includes('Trend');
     const isLowVol = volatility.regime.includes('Low') || volatility.regime.includes('Choppy');
-    const isExtreme = volatility.regime.includes('Extreme');
-
     const regimeColor = isHighVol ? 'text-blue-400 border-blue-500/30' : isLowVol ? 'text-yellow-400 border-yellow-500/30' : 'text-red-400 border-red-500/30';
     const bgEffect = isHighVol ? 'bg-blue-900/10' : isLowVol ? 'bg-yellow-900/10' : 'bg-red-900/10';
 
@@ -231,7 +361,6 @@ const SentimentDivergenceMeter = ({ divergence }: { divergence?: SentimentDiverg
 
     const isBearishDiv = divergence.divergenceStatus.includes('Bearish');
     const isBullishDiv = divergence.divergenceStatus.includes('Bullish');
-    const isAligned = divergence.divergenceStatus.includes('Aligned');
 
     return (
         <div className={`rounded-xl border p-4 mb-4 relative overflow-hidden ${isBearishDiv ? 'bg-red-900/5 border-red-500/20' : isBullishDiv ? 'bg-green-900/5 border-green-500/20' : 'bg-[#0b1215] border-gray-800'}`}>
@@ -255,7 +384,6 @@ const SentimentDivergenceMeter = ({ divergence }: { divergence?: SentimentDiverg
                          <span className={divergence.retailMood.includes('Greed') ? 'text-red-400' : 'text-green-400'}>{divergence.retailMood}</span>
                      </div>
                      <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden flex justify-end">
-                         {/* If Greed, bar goes right. If Fear, bar goes left (visually represented by color/position) */}
                          <div className={`h-full w-3/4 rounded-full ${divergence.retailMood.includes('Greed') ? 'bg-red-500' : 'bg-green-500'}`}></div>
                      </div>
                  </div>
@@ -728,16 +856,16 @@ const AnalysisLoadingState = () => {
     const [step, setStep] = useState(0);
     const steps = [
         { id: 0, text: "INIT_TRIBUNAL (法庭辩论)", sub: "正在召开多空法庭辩论 (Adversarial Debate)..." },
-        { id: 1, text: "SCAN_GAMMA (期权扫描)", sub: "正在计算期权痛点 (Max Pain & Gamma)..." },
-        { id: 2, text: "CHECK_SENTIMENT (情绪背离)", sub: "正在扫描散户vs机构情绪背离 (Divergence)..." },
-        { id: 3, text: "DEFINE_LIQUIDITY (流动性)", sub: "正在寻找流动性猎杀 (Liquidity Grab)..." },
-        { id: 4, text: "CALC_REGIME (市场体制)", sub: "正在判定市场体制与自适应策略 (Regime)..." }, // Updated
+        { id: 1, text: "MINING_HARD_DATA (数据验证)", sub: "正在全网验证 RSI、PE、市值等硬数据..." },
+        { id: 2, text: "AGGREGATE_SENTIMENT (舆情聚合)", sub: "正在扫描 Reddit/Twitter/Guba 社交舆情..." },
+        { id: 3, text: "SCAN_GAMMA (期权/资金)", sub: "正在计算期权痛点 (Max Pain) 或 北向资金..." },
+        { id: 4, text: "CALC_REGIME (市场体制)", sub: "正在判定市场体制与自适应策略 (Regime)..." }, 
         { id: 5, text: "EXEC_STRESS_TEST (压力测试)", sub: "红队风控正在进行压力测试..." }
     ];
 
     useEffect(() => {
         // Extended timings for Pro (Total ~15s)
-        const timings = [3000, 2000, 2000, 2000, 2000, 3000];
+        const timings = [3000, 3000, 3000, 2000, 2000, 3000];
         let currentStep = 0;
         const nextStep = () => {
             if (currentStep < steps.length - 1) {
@@ -878,14 +1006,31 @@ const MarketBadge = ({ context }: { context: string }) => {
 }
 
 // Visual Connector Component for the Funnel
-const LogicConnector = ({ label }: { label?: string }) => (
-    <div className="flex flex-col items-center justify-center py-2 relative z-0 opacity-50">
-        <div className="w-0.5 h-6 bg-gradient-to-b from-gray-800 to-blue-500/50"></div>
-        {label && <div className="text-[8px] uppercase tracking-widest text-blue-500/70 font-bold bg-[#151c24] px-1 z-10">{label}</div>}
-        <div className="w-0.5 h-6 bg-gradient-to-b from-blue-500/50 to-gray-800"></div>
-        <ArrowDown className="w-3 h-3 text-gray-700 -mt-1" />
-    </div>
-);
+const LogicConnector = ({ label, sub, color = "blue" }: { label?: string, sub?: string, color?: "blue" | "purple" | "yellow" | "red" | "green" }) => {
+    const colors = {
+        blue: "text-blue-400 border-blue-500/30 bg-blue-900/20",
+        purple: "text-purple-400 border-purple-500/30 bg-purple-900/20",
+        yellow: "text-yellow-400 border-yellow-500/30 bg-yellow-900/20",
+        red: "text-red-400 border-red-500/30 bg-red-900/20",
+        green: "text-green-400 border-green-500/30 bg-green-900/20",
+    };
+    
+    return (
+        <div className="flex flex-col items-center justify-center py-2 relative z-0">
+             <div className="w-px h-4 bg-gradient-to-b from-gray-700/0 via-gray-700/50 to-gray-700/50"></div>
+             {label && (
+                <div className="flex flex-col items-center my-1 z-10">
+                    <div className={`text-[8px] font-black uppercase tracking-widest px-3 py-1 rounded-full border shadow-[0_2px_10px_-5px_rgba(0,0,0,0.5)] backdrop-blur-sm ${colors[color]}`}>
+                        {label}
+                    </div>
+                    {sub && <div className="text-[7px] font-mono text-gray-500 uppercase tracking-tight mt-0.5 bg-[#0b1215] px-1 rounded">{sub}</div>}
+                </div>
+             )}
+             <div className="w-px h-4 bg-gradient-to-b from-gray-700/50 via-gray-700/50 to-gray-700/0"></div>
+             <ArrowDown className="w-3 h-3 text-gray-600/50 -mt-2" />
+        </div>
+    );
+};
 
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, onAnalyze, symbol }) => {
   const isInitialLoading = loading && !analysis;
@@ -1023,6 +1168,11 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
       }
   }
 
+  // --- MARKET CONTEXT HELPERS ---
+  const isAShare = analysis.marketContext === 'CN_ASHARE';
+  const instLabel = isAShare ? '北向/主力 (Main Force)' : '机构/暗池 (Inst. Flow)';
+  const blockTradeLabel = isAShare ? '大单 (Large Orders)' : '大宗 (Block Trades)';
+
   return (
     <div className="bg-[#151c24] rounded-xl border border-gray-800 p-6 flex flex-col h-full relative shadow-2xl">
         {isRefreshing && (
@@ -1118,225 +1268,216 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
         <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 relative pl-2">
             
             {/* Logic Chain Visual Guide (Vertical Line) */}
-            <div className="absolute left-1.5 top-4 bottom-4 w-0.5 bg-gradient-to-b from-blue-500/0 via-blue-500/20 to-blue-500/0 hidden lg:block"></div>
+            <div className="absolute left-1.5 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-gray-700/50 to-transparent hidden lg:block"></div>
             
             <div className="space-y-6 pb-2 lg:pl-8">
                 
-                {/* --- FUNNEL LAYER 1: CONTEXT --- */}
-                {analysis.volatilityAnalysis && (
-                    <div className="relative">
-                        {/* Visual connector dot */}
-                         <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-blue-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_blue]"></div>
-                        <VolatilityRegimeCard volatility={analysis.volatilityAnalysis} />
-                    </div>
-                )}
-                
-                {/* NEW: Correlation & Catalyst Strip */}
-                <CorrelationStrip correlation={analysis.correlationMatrix} catalyst={analysis.catalystRadar} />
+                {/* --- LAYER 1: CONTEXT (The Truth) --- */}
+                <div className="relative">
+                    {/* Visual Node */}
+                    <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-blue-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_blue]"></div>
+                    {analysis.hardData && <HardDataPanel data={analysis.hardData} marketContext={analysis.marketContext} />}
+                    {analysis.volatilityAnalysis && <VolatilityRegimeCard volatility={analysis.volatilityAnalysis} />}
+                </div>
 
-                {/* NEW: Fractal Resonance Strip */}
-                {analysis.trendResonance && <ResonanceStrip resonance={analysis.trendResonance} />}
+                <LogicConnector label="LAYER 2: ENVIRONMENT" sub="THE FLOW" color="blue" />
 
-                {/* --- FUNNEL LAYER 2: EVIDENCE --- */}
-                <LogicConnector label="EVIDENCE CONVERGENCE" />
+                {/* --- LAYER 2: ENVIRONMENT (The Flow) --- */}
+                <div className="relative">
+                     <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-purple-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_purple]"></div>
+                     <CorrelationStrip correlation={analysis.correlationMatrix} catalyst={analysis.catalystRadar} />
+                     {analysis.trendResonance && <ResonanceStrip resonance={analysis.trendResonance} />}
+                     {analysis.socialAnalysis && <SocialRadarPanel social={analysis.socialAnalysis} />}
+                </div>
 
-                {/* NEW 5.0: OPTIONS GAMMA DASHBOARD */}
-                {analysis.optionsData && (
-                    <div className="relative">
-                        {/* Visual connector dot */}
-                         <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-yellow-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_yellow]"></div>
-                        <OptionsDashboard options={analysis.optionsData} currentPrice={analysis.realTimePrice || 0} />
-                    </div>
-                )}
-                
-                {/* NEW 5.0: SENTIMENT DIVERGENCE METER */}
-                {analysis.sentimentDivergence && (
-                    <div className="relative">
-                         <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-purple-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_purple]"></div>
-                        <SentimentDivergenceMeter divergence={analysis.sentimentDivergence} />
-                    </div>
-                )}
+                <LogicConnector label="LAYER 3: EVIDENCE" sub="THE CONFLICT" color="purple" />
 
-                {/* NEW: ADVERSARIAL TRIBUNAL (The 3-Court System) */}
-                {analysis.marketTribunal && (
-                    <div className="relative">
-                        {/* Visual connector dot */}
-                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-yellow-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_yellow]"></div>
-                        <TribunalDisplay tribunal={analysis.marketTribunal} />
-                    </div>
-                )}
-                
-                {/* NEW 4.0: INSTITUTIONAL MECHANICS (Wyckoff / Volume / SMC) */}
-                {(analysis.wyckoff || analysis.volumeProfile || analysis.smc) && (
-                     <div className="relative">
-                        {/* Visual connector dot */}
-                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-indigo-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_indigo]"></div>
-                        <InstitutionalMechanics wyckoff={analysis.wyckoff} volume={analysis.volumeProfile} smc={analysis.smc} />
-                    </div>
-                )}
-
-                {/* 4. EVIDENCE LAYER (Consensus + Technicals) */}
-                <div className="space-y-4">
+                {/* --- LAYER 3: EVIDENCE (The Deep Dive) --- */}
+                <div className="relative">
+                    <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-yellow-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_yellow]"></div>
                     
-                    {/* TRINITY CONSENSUS CARD */}
-                    {analysis.trinityConsensus && (
-                        <div className="relative">
-                            {/* Visual connector dot */}
-                            <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-blue-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_#3b82f6]"></div>
+                    {/* NEW 5.0: OPTIONS GAMMA DASHBOARD */}
+                    {analysis.optionsData && <OptionsDashboard options={analysis.optionsData} currentPrice={analysis.realTimePrice || 0} />}
+                    
+                    {/* NEW 5.0: SENTIMENT DIVERGENCE METER */}
+                    {analysis.sentimentDivergence && <SentimentDivergenceMeter divergence={analysis.sentimentDivergence} />}
+
+                    {/* NEW: ADVERSARIAL TRIBUNAL */}
+                    {analysis.marketTribunal && <TribunalDisplay tribunal={analysis.marketTribunal} />}
+                    
+                    {/* NEW 4.0: INSTITUTIONAL MECHANICS */}
+                    {(analysis.wyckoff || analysis.volumeProfile || analysis.smc) && (
+                        <InstitutionalMechanics wyckoff={analysis.wyckoff} volume={analysis.volumeProfile} smc={analysis.smc} />
+                    )}
+                </div>
+
+                <LogicConnector label="LAYER 4: SYNTHESIS" sub="THE JUDGMENT" color="yellow" />
+
+                {/* --- LAYER 4: SYNTHESIS (The Judgment) --- */}
+                <div className="relative">
+                    <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-green-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_green]"></div>
+                    
+                    <div className="space-y-4">
+                        {/* TRINITY CONSENSUS CARD */}
+                        {analysis.trinityConsensus && (
                             <TrinityConsensusCard 
                                 consensus={analysis.trinityConsensus} 
                                 smartMoney={analysis.smartMoneyAnalysis} 
                                 hasVisual={!!analysis.visualAnalysis}
                             />
-                        </div>
-                    )}
+                        )}
+                        
+                        {/* NEW: VISUAL OR DATA ANALYSIS CARD */}
+                        {analysis.visualAnalysis ? (
+                            <div className="bg-indigo-900/10 rounded-xl p-4 border border-indigo-500/30 relative overflow-hidden group ml-1">
+                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
+                                 <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Eye className="w-16 h-16 text-indigo-500"/></div>
+                                 <div className="flex items-center gap-2 mb-2">
+                                    <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">PRIMARY SOURCE</span>
+                                    <h3 className="text-indigo-400 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                                        <ScanLine className="w-3 h-3" /> AI 视觉洞察 (Vision Insights)
+                                    </h3>
+                                 </div>
+                                <div className="text-xs text-indigo-200/90 leading-relaxed font-light">
+                                    <Typewriter text={analysis.visualAnalysis} speed={5} />
+                                </div>
+                            </div>
+                        ) : analysis.dataMining ? (
+                            <DataMiningCard data={analysis.dataMining} />
+                        ) : null}
                     
-                    {/* NEW: VISUAL OR DATA ANALYSIS CARD */}
-                    {analysis.visualAnalysis ? (
-                        <div className="bg-indigo-900/10 rounded-xl p-4 border border-indigo-500/30 relative overflow-hidden group ml-1">
-                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
-                             <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Eye className="w-16 h-16 text-indigo-500"/></div>
-                             <div className="flex items-center gap-2 mb-2">
-                                <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">PRIMARY SOURCE</span>
-                                <h3 className="text-indigo-400 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
-                                    <ScanLine className="w-3 h-3" /> AI 视觉洞察 (Vision Insights)
+                        {/* Technical Cockpit */}
+                        {analysis.technicalIndicators && (
+                            <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
+                                <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Cpu className="w-16 h-16 text-blue-500"/></div>
+                                <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
+                                    <Activity className="w-3 h-3 text-blue-400" /> 技术仪表盘 (Technical Evidence)
                                 </h3>
-                             </div>
-                            <div className="text-xs text-indigo-200/90 leading-relaxed font-light">
-                                <Typewriter text={analysis.visualAnalysis} speed={5} />
-                            </div>
-                        </div>
-                    ) : analysis.dataMining ? (
-                        /* DATA MINING DISPLAY IF NO IMAGE */
-                        <DataMiningCard data={analysis.dataMining} />
-                    ) : null}
-                
-                    {/* Technical Cockpit */}
-                    {analysis.technicalIndicators && (
-                        <div className="bg-[#0b1215] rounded-xl p-4 border border-gray-800 relative overflow-hidden group hover:border-blue-500/20 transition-colors">
-                            <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Cpu className="w-16 h-16 text-blue-500"/></div>
-                            <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
-                                <Activity className="w-3 h-3 text-blue-400" /> 技术仪表盘 (Technical Evidence)
-                            </h3>
-                            
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                                {/* RSI */}
-                                <div className="flex flex-col gap-1.5">
-                                    <div className="flex justify-between text-[9px] text-gray-500 font-bold uppercase"><span>RSI</span> <span className={analysis.technicalIndicators.rsi > 70 ? 'text-red-400' : analysis.technicalIndicators.rsi < 30 ? 'text-green-400' : 'text-blue-400'}>{analysis.technicalIndicators.rsi}</span></div>
-                                    <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden flex relative"><div className="absolute left-0 w-[30%] h-full bg-green-500/20"></div><div className="absolute right-0 w-[30%] h-full bg-red-500/20"></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_white] transition-all duration-1000 z-10" style={{ left: `${analysis.technicalIndicators.rsi}%` }}></div></div>
+                                
+                                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                                    {/* RSI */}
+                                    <div className="flex flex-col gap-1.5">
+                                        <div className="flex justify-between text-[9px] text-gray-500 font-bold uppercase"><span>RSI</span> <span className={analysis.technicalIndicators.rsi > 70 ? 'text-red-400' : analysis.technicalIndicators.rsi < 30 ? 'text-green-400' : 'text-blue-400'}>{analysis.technicalIndicators.rsi}</span></div>
+                                        <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden flex relative"><div className="absolute left-0 w-[30%] h-full bg-green-500/20"></div><div className="absolute right-0 w-[30%] h-full bg-red-500/20"></div><div className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_8px_white] transition-all duration-1000 z-10" style={{ left: `${analysis.technicalIndicators.rsi}%` }}></div></div>
+                                    </div>
+                                    {/* KDJ */}
+                                    <div className="flex flex-col gap-1.5"><div className="text-[9px] text-gray-500 font-bold uppercase">KDJ</div><div className="flex items-center gap-2">{analysis.technicalIndicators.kdjStatus ? (<span className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit flex items-center gap-1 ${analysis.technicalIndicators.kdjStatus.includes('Golden') || analysis.technicalIndicators.kdjStatus.includes('金叉') ? 'text-green-400 border-green-500/30 bg-green-900/20' : analysis.technicalIndicators.kdjStatus.includes('Death') || analysis.technicalIndicators.kdjStatus.includes('死叉') ? 'text-red-400 border-red-500/30 bg-red-900/20' : 'text-gray-400 border-gray-700 bg-gray-800'}`}>{analysis.technicalIndicators.kdjStatus}</span>) : <span className="text-[10px] text-gray-600">--</span>}</div></div>
+                                    {/* MACD */}
+                                    <div className="flex flex-col gap-1.5 border-t border-gray-800/50 pt-2"><div className="text-[9px] text-gray-500 font-bold uppercase">MACD</div><div className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit flex items-center gap-1 ${analysis.technicalIndicators.macdStatus.includes('Golden') || analysis.technicalIndicators.macdStatus.includes('金叉') ? 'text-green-400 border-green-500/30 bg-green-900/20' : analysis.technicalIndicators.macdStatus.includes('Death') || analysis.technicalIndicators.macdStatus.includes('死叉') ? 'text-red-400 border-red-500/30 bg-red-900/20' : 'text-gray-400 border-gray-700 bg-gray-800'}`}>{analysis.technicalIndicators.macdStatus}</div></div>
+                                    {/* Volume */}
+                                    <div className="flex flex-col gap-1.5 border-t border-gray-800/50 pt-2"><div className="text-[9px] text-gray-500 font-bold uppercase">量能 (Vol)</div><span className="text-[10px] text-white font-mono flex items-center gap-2"><BarChart2 className="w-3 h-3 text-blue-400" />{analysis.technicalIndicators.volumeStatus || "Normal"}</span></div>
                                 </div>
-                                {/* KDJ */}
-                                <div className="flex flex-col gap-1.5"><div className="text-[9px] text-gray-500 font-bold uppercase">KDJ</div><div className="flex items-center gap-2">{analysis.technicalIndicators.kdjStatus ? (<span className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit flex items-center gap-1 ${analysis.technicalIndicators.kdjStatus.includes('Golden') || analysis.technicalIndicators.kdjStatus.includes('金叉') ? 'text-green-400 border-green-500/30 bg-green-900/20' : analysis.technicalIndicators.kdjStatus.includes('Death') || analysis.technicalIndicators.kdjStatus.includes('死叉') ? 'text-red-400 border-red-500/30 bg-red-900/20' : 'text-gray-400 border-gray-700 bg-gray-800'}`}>{analysis.technicalIndicators.kdjStatus}</span>) : <span className="text-[10px] text-gray-600">--</span>}</div></div>
-                                {/* MACD */}
-                                <div className="flex flex-col gap-1.5 border-t border-gray-800/50 pt-2"><div className="text-[9px] text-gray-500 font-bold uppercase">MACD</div><div className={`text-[10px] font-bold px-2 py-0.5 rounded border w-fit flex items-center gap-1 ${analysis.technicalIndicators.macdStatus.includes('Golden') || analysis.technicalIndicators.macdStatus.includes('金叉') ? 'text-green-400 border-green-500/30 bg-green-900/20' : analysis.technicalIndicators.macdStatus.includes('Death') || analysis.technicalIndicators.macdStatus.includes('死叉') ? 'text-red-400 border-red-500/30 bg-red-900/20' : 'text-gray-400 border-gray-700 bg-gray-800'}`}>{analysis.technicalIndicators.macdStatus}</div></div>
-                                {/* Volume */}
-                                <div className="flex flex-col gap-1.5 border-t border-gray-800/50 pt-2"><div className="text-[9px] text-gray-500 font-bold uppercase">量能 (Vol)</div><span className="text-[10px] text-white font-mono flex items-center gap-2"><BarChart2 className="w-3 h-3 text-blue-400" />{analysis.technicalIndicators.volumeStatus || "Normal"}</span></div>
+                                {/* Institutional */}
+                                {analysis.institutionalData && (
+                                    <div className="mt-4 pt-3 border-t border-gray-800/50 grid grid-cols-2 gap-3 bg-[#151c24]/50 -mx-4 -mb-4 px-4 py-3">
+                                        <div className="flex flex-col"><span className="text-[9px] text-gray-500 uppercase font-bold flex gap-1 items-center"><Briefcase className="w-3 h-3"/> {instLabel}</span><span className={`text-xs font-mono font-bold ${analysis.institutionalData.netInflow.includes('-') ? 'text-red-400' : 'text-green-400'}`}>{analysis.institutionalData.netInflow}</span></div>
+                                        <div className="flex flex-col items-end"><span className="text-[9px] text-gray-500 uppercase font-bold">{blockTradeLabel}</span><span className="text-xs font-mono text-white">{analysis.institutionalData.blockTrades}</span></div>
+                                    </div>
+                                )}
                             </div>
-                            {/* Institutional */}
-                            {analysis.institutionalData && (
-                                <div className="mt-4 pt-3 border-t border-gray-800/50 grid grid-cols-2 gap-3 bg-[#151c24]/50 -mx-4 -mb-4 px-4 py-3">
-                                    <div className="flex flex-col"><span className="text-[9px] text-gray-500 uppercase font-bold flex gap-1 items-center"><Briefcase className="w-3 h-3"/> 主力净流入</span><span className={`text-xs font-mono font-bold ${analysis.institutionalData.netInflow.includes('-') ? 'text-red-400' : 'text-green-400'}`}>{analysis.institutionalData.netInflow}</span></div>
-                                    <div className="flex flex-col items-end"><span className="text-[9px] text-gray-500 uppercase font-bold">大单活跃度</span><span className="text-xs font-mono text-white">{analysis.institutionalData.blockTrades}</span></div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                    
-                    {/* Reasoning Text (Analysis Note) */}
-                    <div className="bg-[#0b1215]/50 p-4 rounded-xl border border-gray-800/50 hover:border-gray-700 transition-colors">
-                        <div className="flex items-center gap-2 mb-2">
-                            <BrainCircuit className="w-3 h-3 text-purple-400" />
-                            <span className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">底层逻辑解析 (Analysis Logic)</span>
-                        </div>
-                        <div className="text-xs text-gray-300/90 font-light leading-relaxed">
-                            <Typewriter text={analysis.reasoning} speed={3} />
+                        )}
+                        
+                        {/* Reasoning Text (Analysis Note) */}
+                        <div className="bg-[#0b1215]/50 p-4 rounded-xl border border-gray-800/50 hover:border-gray-700 transition-colors">
+                            <div className="flex items-center gap-2 mb-2">
+                                <BrainCircuit className="w-3 h-3 text-purple-400" />
+                                <span className="text-[10px] text-purple-200 font-bold uppercase tracking-wider">底层逻辑解析 (Analysis Logic)</span>
+                            </div>
+                            <div className="text-xs text-gray-300/90 font-light leading-relaxed">
+                                <Typewriter text={analysis.reasoning} speed={3} />
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* --- FUNNEL LAYER 3: DEDUCTION --- */}
-                <LogicConnector label="SCENARIO DEDUCTION" />
+                <LogicConnector label="LAYER 5: DEDUCTION" sub="THE SCENARIOS" color="green" />
 
-                {/* 3. SCENARIO DEDUCTION SECTION */}
+                {/* --- LAYER 5: DEDUCTION (The Scenarios) --- */}
                 {analysis.scenarios && (
-                <div className="bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
-                    <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><GitCommit className="w-20 h-20 text-purple-500"/></div>
-                    <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
-                        <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Deductions)
-                    </h3>
+                <div className="relative">
+                     <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-green-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_green]"></div>
+                    <div className="bg-[#0b1215] rounded-xl p-5 border border-gray-800 relative overflow-hidden group hover:border-purple-500/20 transition-colors">
+                        <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><GitCommit className="w-20 h-20 text-purple-500"/></div>
+                        <h3 className="text-gray-500 text-[10px] font-bold uppercase mb-4 flex items-center gap-2 tracking-widest border-b border-gray-800/50 pb-2">
+                            <GitMerge className="w-3 h-3 text-purple-400" /> 情景推演计算 (Calculated Deductions)
+                        </h3>
 
-                    <div className="grid grid-cols-1 gap-4">
-                        {/* Bullish */}
-                        <div className="group/item">
-                        <div className="flex justify-between text-xs items-center mb-1">
-                            <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
-                                <ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本 (Bullish)
-                            </span>
-                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
-                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
-                            <div className="text-right">
-                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
-                                <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
+                        <div className="grid grid-cols-1 gap-4">
+                            {/* Bullish */}
+                            <div className="group/item">
+                            <div className="flex justify-between text-xs items-center mb-1">
+                                <span className="font-bold text-green-400 flex items-center gap-2 bg-green-500/10 px-2 py-0.5 rounded border border-green-500/20">
+                                    <ArrowUpRight className="w-3.5 h-3.5"/> 牛市剧本 (Bullish)
+                                </span>
+                                <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bullish.probability}%</span>
                             </div>
-                        </div>
-                        </div>
+                            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                                <div className="h-full bg-gradient-to-r from-green-600 to-green-400 rounded-full" style={{ width: `${analysis.scenarios.bullish.probability}%` }}></div>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                                <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bullish.description}</span>
+                                <div className="text-right">
+                                    <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                                    <div className="font-mono text-green-300 font-bold">{formatCurrency(analysis.scenarios.bullish.targetPrice)}</div>
+                                </div>
+                            </div>
+                            </div>
 
-                        {/* Neutral */}
-                        <div className="group/item">
-                        <div className="flex justify-between text-xs items-center mb-1">
-                            <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
-                                <Minus className="w-3.5 h-3.5"/> 震荡剧本 (Neutral)
-                            </span>
-                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
-                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
-                            <div className="text-right">
-                                <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
-                                <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
+                            {/* Neutral */}
+                            <div className="group/item">
+                            <div className="flex justify-between text-xs items-center mb-1">
+                                <span className="font-bold text-yellow-400 flex items-center gap-2 bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20">
+                                    <Minus className="w-3.5 h-3.5"/> 震荡剧本 (Neutral)
+                                </span>
+                                <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.neutral.probability}%</span>
                             </div>
-                        </div>
-                        </div>
+                            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                                <div className="h-full bg-gradient-to-r from-yellow-600 to-yellow-400 rounded-full" style={{ width: `${analysis.scenarios.neutral.probability}%` }}></div>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                                <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.neutral.description}</span>
+                                <div className="text-right">
+                                    <div className="text-[9px] uppercase font-bold text-gray-600">Range</div>
+                                    <div className="font-mono text-yellow-300 font-bold">{formatCurrency(analysis.scenarios.neutral.targetPrice)}</div>
+                                </div>
+                            </div>
+                            </div>
 
-                        {/* Bearish */}
-                        <div className="group/item">
-                        <div className="flex justify-between text-xs items-center mb-1">
-                            <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-                                <ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本 (Bearish)
-                            </span>
-                            <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
-                        </div>
-                        <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
-                            <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
-                        </div>
-                        <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
-                            <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
-                            <div className="text-right">
-                                <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
-                                <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
+                            {/* Bearish */}
+                            <div className="group/item">
+                            <div className="flex justify-between text-xs items-center mb-1">
+                                <span className="font-bold text-red-400 flex items-center gap-2 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
+                                    <ArrowDownRight className="w-3.5 h-3.5"/> 熊市剧本 (Bearish)
+                                </span>
+                                <span className="font-mono text-white text-sm font-bold">{analysis.scenarios.bearish.probability}%</span>
                             </div>
-                        </div>
+                            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden mb-2">
+                                <div className="h-full bg-gradient-to-r from-red-600 to-red-400 rounded-full" style={{ width: `${analysis.scenarios.bearish.probability}%` }}></div>
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-gray-500 bg-[#151c24] p-2 rounded-lg border border-gray-800/50">
+                                <span className="text-gray-400 leading-relaxed max-w-[70%]">{analysis.scenarios.bearish.description}</span>
+                                <div className="text-right">
+                                    <div className="text-[9px] uppercase font-bold text-gray-600">Target</div>
+                                    <div className="font-mono text-red-300 font-bold">{formatCurrency(analysis.scenarios.bearish.targetPrice)}</div>
+                                </div>
+                            </div>
+                            </div>
                         </div>
                     </div>
                 </div>
                 )}
                 
-                {/* --- FUNNEL LAYER 4: FINAL EXECUTION (THE TIP) --- */}
+                {/* --- LAYER 6: FINAL EXECUTION (The Action) --- */}
+                <LogicConnector label="LAYER 6: EXECUTION" sub="THE ACTION" color="red" />
+
                 {analysis.tradingSetup && (
-                    <>
-                        <LogicConnector label="FINAL SYNTHESIS" />
-                        <div className="space-y-4 relative bg-gradient-to-b from-[#151c24] to-[#0b1215] rounded-xl border border-blue-500/40 shadow-[0_0_20px_rgba(37,99,235,0.1)] p-1">
-                            
-                            {/* Visual connector dot */}
-                            <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-cyan-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_cyan]"></div>
+                    <div className="relative">
+                        {/* Visual Node - The Destination */}
+                        <div className="absolute -left-[37px] top-6 w-3 h-3 rounded-full bg-red-500 border-2 border-white z-10 hidden lg:block shadow-[0_0_15px_red] animate-pulse"></div>
+                        
+                        <div className="space-y-4 relative bg-[#0b1215] rounded-xl border-2 border-red-500/50 shadow-[0_0_30px_rgba(220,38,38,0.15)] p-1 overflow-hidden group">
+                            {/* Funnel Tip Effect */}
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-red-500 shadow-[0_0_10px_red]"></div>
                             
                             {/* The Blueprint */}
                             <div className="bg-[#151c24] rounded-t-lg p-1">
@@ -1416,7 +1557,7 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                                 </div>
                             </div>
                         </div>
-                    </>
+                    </div>
                 )}
 
                 {/* 6. RED TEAM CRITIC (Post-Analysis Check) */}
@@ -1425,9 +1566,6 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                          <div className="border-t border-gray-800/50 mb-4 flex items-center justify-center">
                              <span className="bg-[#151c24] px-2 text-[9px] text-gray-600 uppercase">Risk Validation</span>
                          </div>
-                        {/* Visual connector dot */}
-                        <div className="absolute -left-[37px] top-10 w-3 h-3 rounded-full bg-red-500 border-2 border-[#151c24] z-10 hidden lg:block shadow-[0_0_10px_red]"></div>
-                        
                         <div className="flex items-center justify-between mb-2 px-1">
                             <div className="flex items-center gap-2 text-[10px] text-red-400 font-bold uppercase tracking-widest">
                                 <ShieldAlert className="w-3 h-3" /> 红队对抗演练 (Critic Protocol)

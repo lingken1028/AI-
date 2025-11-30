@@ -197,6 +197,28 @@ export interface VolatilityAnalysis {
     description: string; // Logic reasoning e.g. "VIX at 12, market is choppy. Avoid breakouts."
 }
 
+// NEW 7.0: Hard Data Validation (The "Truth" Layer)
+export interface HardData {
+    realTimeRsi: number; // The ACTUAL number found via search
+    rsiStatus: 'Oversold (超卖)' | 'Neutral (中性)' | 'Overbought (超买)';
+    peRatio: number; // 0 if not applicable
+    pbRatio: number;
+    marketCap: string;
+    fiftyTwoWeekRange: string; // "100.00 - 150.00"
+    volume24h: string;
+    dataSource: string; // e.g. "Aggregated Public Data"
+}
+
+// NEW 7.0: Social Sentiment Aggregation (The "Buzz" Layer)
+export interface SocialAnalysis {
+    retailScore: number; // 0 (Panic) to 100 (Euphoria)
+    institutionalScore: number; // 0 (Bearish) to 100 (Bullish)
+    socialVolume: 'Low' | 'Normal' | 'High' | 'Explosive';
+    trendingKeywords: string[];
+    sentimentVerdict: 'Retail FOMO' | 'Smart Money Divergence' | 'Panic Selling' | 'Unified Bullish' | 'Unified Bearish';
+    sources: string[]; // e.g. ["Reddit", "Bloomberg", "X"]
+}
+
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
@@ -230,6 +252,10 @@ export interface AIAnalysis {
   technicalIndicators?: TechnicalIndicators;
   institutionalData?: InstitutionalData;
   smartMoneyAnalysis?: SmartMoneyAnalysis; 
+
+  // NEW 7.0 Fields
+  hardData?: HardData;
+  socialAnalysis?: SocialAnalysis;
 
   scenarios?: {
     bullish: MarketScenario;
