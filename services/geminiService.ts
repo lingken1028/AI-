@@ -1,3 +1,5 @@
+
+
 import { GoogleGenAI, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { AIAnalysis, SignalType, Timeframe, StockSymbol, BacktestStrategy, BacktestPeriod, BacktestResult, GuruInsight, RealTimeAnalysis, MarketRegime } from "../types";
 import { STRATEGIES } from "../constants";
@@ -171,87 +173,136 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
 
     const horizon = getPredictionHorizon(timeframe);
     
-    const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE');
+    // --- MARKET SEGMENTATION LOGIC ---
+    const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE') || /^[0-9]{6}$/.test(symbol.split(':')[1] || '');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
-    
+    const isForex = symbol.startsWith('FX') || symbol.startsWith('OANDA');
+    const isUSStock = !isAShare && !isCrypto && !isForex;
+
+    let marketContext = 'GLOBAL_FX';
+    if (isAShare) marketContext = 'CN_ASHARE';
+    else if (isUSStock) marketContext = 'US_EQUITY';
+    else if (isCrypto) marketContext = 'CRYPTO';
+
     // DYNAMIC TIMEFRAME CONTEXT FOR SEARCH
     const tfContext = timeframe === Timeframe.D1 ? "日线" : `${timeframe}级别`; 
     const tfSearch = timeframe === Timeframe.D1 ? "daily chart" : `${timeframe} chart`;
 
     let searchInstructions = "";
+    let marketSpecificProtocol = "";
+
+    // 1. CONFIGURE SEARCH & PROTOCOL BASED ON MARKET TYPE
     if (isAShare) {
-        searchInstructions = `
-          MANDATORY DATA EXTRACTION (HYBRID):
-          1. "东方财富 ${symbol} 资金流向 ${tfContext} 主力净流入"
-          2. "同花顺 ${symbol} KDJ数值 MACD金叉死叉 ${tfContext} 最新值"
-          3. "雪球 ${symbol} 讨论区 市场情绪 机构观点"
+        // A-SHARE LOGIC (Policy + Hot Money + T+1)
+        marketSpecificProtocol = `
+            **MARKET PROTOCOL: CHINA A-SHARES (CN_ASHARE)**
+            1.  **POLICY IS KING**: Prioritize government policies (Five-Year Plans, PBOC announcements, State Media tone).
+            2.  **FUNDS FLOW**: Focus on "Northbound Money" (北向资金) and "Main Force" (主力资金/游资).
+            3.  **RULES**: Strictly adhere to T+1 trading rules. Price Limits (10%/20%) are critical support/resistance.
+            4.  **CONCEPTS**: Identify "Concept Hype" (概念炒作) and Sector Rotation (板块轮动).
+            5.  **LANGUAGE**: Use terms like "Dragon Return" (龙头反包), "Limit Up" (涨停), "Wash" (洗盘).
         `;
+        
+        if (!imageBase64) {
+             searchInstructions = `
+              DEEP MINING MODE (A-SHARE):
+              1. "东方财富 ${symbol} 主力资金流向 龙虎榜"
+              2. "同花顺 ${symbol} 概念板块 涨停原因"
+              3. "雪球 ${symbol} 深度研报 目标价"
+              4. "新浪财经 ${symbol} 重大利好利空消息"
+            `;
+        } else {
+             searchInstructions = `"${symbol} 主力资金流向", "${symbol} 最新研报", "${symbol} 概念题材"`;
+        }
+
     } else if (isCrypto) {
-        searchInstructions = `
-          MANDATORY DATA EXTRACTION (HYBRID):
-          1. "${symbol} funding rate open interest ${tfSearch} current"
-          2. "${symbol} RSI KDJ indicator values ${tfSearch} exact number"
-          3. "${symbol} liquidation levels heatmap"
+        // CRYPTO LOGIC (24/7 + On-Chain)
+         marketSpecificProtocol = `
+            **MARKET PROTOCOL: CRYPTO ASSETS**
+            1.  **ON-CHAIN**: Liquidation Heatmaps, Open Interest (OI), Funding Rates.
+            2.  **MACRO**: Correlation with NASDAQ/Gold.
+            3.  **TECHNICALS**: High respect for Fibonacci and pure Price Action.
+            4.  **SENTIMENT**: Fear & Greed Index, Twitter/X trends.
         `;
+         if (!imageBase64) {
+            searchInstructions = `
+              DEEP MINING MODE (CRYPTO):
+              1. "${symbol} liquidation heatmap levels order book depth"
+              2. "${symbol} funding rate open interest trend coinglass"
+              3. "${symbol} technical analysis rsi divergence macd"
+              4. "${symbol} crypto twitter sentiment news"
+            `;
+        } else {
+            searchInstructions = `"${symbol} technical analysis", "${symbol} funding rate open interest"`;
+        }
+
     } else {
-        searchInstructions = `
-          MANDATORY DATA EXTRACTION (HYBRID):
-          1. "${symbol} unusual options activity today RSI value ${tfSearch}"
-          2. "${symbol} institutional net inflow current data"
-          3. "${symbol} technical support resistance levels ${tfSearch}"
+        // US/GLOBAL LOGIC (Institutional + Macro)
+        marketSpecificProtocol = `
+            **MARKET PROTOCOL: US EQUITIES/GLOBAL**
+            1.  **INSTITUTIONAL**: Dark Pools, VWAP deviations, Options Gamma Exposure (GEX).
+            2.  **MACRO**: Fed Policy (Hawkish/Dovish), Bond Yields, Earnings.
+            3.  **RULES**: T+0 trading allowed. Pre-market/After-hours liquidity matters.
+            4.  **STRUCTURE**: Respect Key Levels, Supply/Demand Zones, SMC (Smart Money Concepts).
         `;
+        if (!imageBase64) {
+            searchInstructions = `
+              DEEP MINING MODE (US/GLOBAL):
+              1. "${symbol} technical analysis pivot points fibonacci levels today"
+              2. "${symbol} option chain max pain put call ratio"
+              3. "${symbol} institutional ownership change recent filings"
+              4. "${symbol} analyst price targets consensus strong buy sell"
+            `;
+        } else {
+            searchInstructions = `"${symbol} technical analysis", "${symbol} institutional flow", "${symbol} options sentiment"`;
+        }
     }
 
     // UPDATED SYSTEM PROMPT: TRINITY CONSENSUS PROTOCOL
     const systemPrompt = `
-      You are **TradeGuard Pro**, an elite institutional trading AI with Multi-Modal Vision capabilities.
+      You are **TradeGuard Pro**, an elite institutional trading AI.
       
       **MISSION**: Zero Variance. Rigorous Deduction. No Hallucinations.
-      **LANGUAGE**: All analysis content MUST be in **SIMPLIFIED CHINESE (简体中文)** for readability.
+      **LANGUAGE**: All analysis content MUST be in **SIMPLIFIED CHINESE (简体中文)**.
+      
+      ${marketSpecificProtocol}
       
       **METHODOLOGY: THE TRINITY CONSENSUS PROTOCOL (三位一体共识协议)**
-      You must simulate three distinct analysts. Their scores MUST be consistent with their specific data sources.
       
       1.  **THE QUANT (量化派)**: 
-          - Focus: RSI, Pivot Points, Fibonacci Levels, Bollinger Bands.
-          - Output: A math-based score (0-100).
-      
-      2.  **THE SMART MONEY (资金派)**:
-          - Focus: Volume Spread Analysis (VSA), Net Inflow, Order Blocks.
-          - Output: A flow-based score (0-100).
-      
-      3.  **THE CHARTIST (结构派) - VISION DRIVEN**:
-          - Focus: Market Structure (MSS), Price Action, K-Line Patterns.
-          - **CRITICAL RULE**: If 'visualAnalysis' is present, the Chart Pattern Score MUST be derived directly from it. 
-            - If Visual = "Bearish Engulfing", Score MUST be < 40.
-            - If Visual = "Bullish Breakout", Score MUST be > 60.
-          - Output: A structure-based score (0-100).
-      
-      **STEP-BY-STEP EXECUTION CHAIN (LOGIC SUTURE)**:
-      
-      1.  **VISUAL & DATA INGESTION**:
-          - IF IMAGE PROVIDED: First, generate 'visualAnalysis'. What you see here becomes the "Ground Truth" for the Chartist persona.
-          - IF NO IMAGE: Use Technical Indicators (RSI/MACD) as Ground Truth for structure.
+          - A-Share: Main Force Net Inflow, Limit Up statistics.
+          - US/Crypto: RSI, Pivot Points, Fibonacci, Options OI.
+      2.  **THE SMART MONEY (资金派)**: 
+          - A-Share: Dragon & Tiger List (龙虎榜), Northbound Flows.
+          - US/Crypto: Net Inflow, Order Blocks, Whale Alerts.
+      3.  **THE CHARTIST (结构派)**: 
+          - **IF IMAGE PROVIDED**: The image is Ground Truth. Score based on visual patterns (e.g., "Bearish Engulfing").
+          - **IF NO IMAGE (DEEP MINING MODE)**: The Chartist must RECONSTRUCT the structure from search text data. 
+            - Look for keywords like "breaking above 50 EMA", "forming lower lows".
+            - **TRIANGULATION**: Compare multiple search results. If Source A says "Bullish" and Source B says "Bearish", the Chartist score MUST be NEUTRAL (50).
 
-      2.  **TRINITY VOTE & CONSISTENCY CHECK**:
-          - Calculate separate scores for Quant, Smart Money, and Chartist.
-          - **INTEGRITY CHECK**: If Visual Analysis is Bearish (e.g., "Shooting Star"), the Chartist Score MUST reflect this. You cannot say "Shooting Star" and give a score of 80.
+      **LOGIC SUTURE (EXECUTION CHAIN)**:
       
-      3.  **DRIVER CALCULATION**:
-          - Combine the 3 scores into the final 'scoreDrivers' and 'winRate'.
+      1.  **DATA INGESTION**:
+          - IF IMAGE: 'visualAnalysis' is key.
+          - IF NO IMAGE: Generate 'dataMining' field. List specific data points found in text. 
+
+      2.  **CONSISTENCY CHECK**:
+          - If 'dataMining' shows contradictory data (e.g. Price < EMA but News is Good), the 'trinityConsensus.consensusVerdict' must be 'DIVERGENCE'.
+          - The 'winRate' must be penalized if data is contradictory.
       
-      4.  **ARCHITECT BLUEPRINT (COHERENCE)**:
-          - The 'tradingSetup' must be the **DIRECT LOGICAL CONSEQUENCE** of the Consensus. 
-          - **MANDATORY**: If you saw a specific pattern in the image (e.g. "Double Bottom"), the 'tradingSetup.strategyIdentity' MUST be "Double Bottom (双底突破)".
-          - 'reasoning' must strictly explain *why* the Visual/Quant/Flow analysis led to this setup.
+      3.  **ARCHITECT BLUEPRINT**:
+          - 'tradingSetup' must use the specific levels found in search (for No Image) or seen in the chart (for Image).
       
       Current Context:
       - Asset: ${symbol} (${currentPrice})
       - Timeframe: ${timeframe}
+      - Market Context: ${marketContext}
       
       Output JSON Schema (Strictly maintain Chinese strings):
       {
         "signal": "BUY" | "SELL" | "NEUTRAL",
+        "marketContext": "${marketContext}",
         "realTimePrice": number,
         "scoreDrivers": {
             "technical": number, "institutional": number, "sentiment": number, "macro": number 
@@ -262,51 +313,53 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             "chartPatternScore": number,
             "consensusVerdict": "STRONG_CONFLUENCE (强共振)" | "MODERATE (一般)" | "DIVERGENCE (背离)"
         },
-        "smartMoneyAnalysis": {
-            "retailSentiment": "Fear" | "Greed" | "Neutral",
-            "smartMoneyAction": "Accumulating (吸筹)" | "Distributing (派发)" | "Marking Up (拉升)" | "Inactive",
-            "orderBlockStatus": "Active Supply Zone" | "Active Demand Zone" | "None"
+        "visualAnalysis": "string (If Image provided. Else null)",
+        "dataMining": {
+            "sourcesCount": number,
+            "confidenceLevel": "High" | "Medium" | "Low",
+            "keyDataPoints": ["string (e.g. 'RSI Divergence on Daily', 'Support at 100')"],
+            "contradictions": ["string (e.g. 'Price rising but Volume falling')"],
+            "primaryTrendSource": "string"
         },
-        "trendResonance": {
-            "trendHTF": "Bullish" | "Bearish",
-            "trendLTF": "Bullish" | "Bearish",
-            "resonance": "Resonant (顺势)" | "Conflict (逆势/回调)" | "Chaos (震荡)"
-        },
-        "visualAnalysis": "string (If Image provided: Describe specific visual findings like 'Red Bearish Engulfing Candle', 'Price touching blue EMA20 line'. THIS IS THE GROUND TRUTH. If No Image: null)",
         "winRate": number, 
         "historicalWinRate": number, 
         "entryPrice": number,
-        "entryStrategy": "string (Short Name in Chinese, e.g. '0.618回撤接多')",
+        "entryStrategy": "string (Short Name)",
         "takeProfit": number,
         "stopLoss": number,
         "supportLevel": number,
         "resistanceLevel": number,
         "riskRewardRatio": number,
-        "reasoning": "string (MUST be in Simplified Chinese. Synthesize Visual, Quant, and Flow into a cohesive logic stream)",
-        "volatilityAssessment": "string (Chinese)",
-        "strategyMatch": "string (e.g. 'ICT + 威科夫')",
-        "marketStructure": "string (e.g. '多头排列 (Bullish)')",
+        "reasoning": "string (Explain the logic. If No Image, explain how you Triangulated the data)",
+        "volatilityAssessment": "string",
+        "strategyMatch": "string",
+        "marketStructure": "string",
         "technicalIndicators": {
             "rsi": number, "macdStatus": "string", "emaAlignment": "string", "bollingerStatus": "string", "kdjStatus": "string", "volumeStatus": "string"
         },
         "institutionalData": {
             "netInflow": "string", "blockTrades": "string", "mainForceSentiment": "string"
         },
+        "smartMoneyAnalysis": {
+            "retailSentiment": "Fear" | "Greed" | "Neutral",
+            "smartMoneyAction": "string",
+            "orderBlockStatus": "string"
+        },
         "scenarios": {
-            "bullish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
-            "bearish": { "probability": number, "targetPrice": number, "description": "string (Chinese)" },
-            "neutral": { "probability": number, "targetPrice": number, "description": "string (Chinese)" }
+            "bullish: { "probability": number, "targetPrice": number, "description": "string" },
+            "bearish": { "probability": number, "targetPrice": number, "description": "string" },
+            "neutral": { "probability": number, "targetPrice": number, "description": "string" }
         },
         "tradingSetup": {
-            "strategyIdentity": "string (Chinese, e.g. '头肩底右肩突破')",
-            "confirmationTriggers": ["string (Chinese)"],
-            "invalidationPoint": "string (Chinese, explain the condition)"
+            "strategyIdentity": "string",
+            "confirmationTriggers": ["string"],
+            "invalidationPoint": "string"
         },
         "redTeaming": {
-            "risks": ["string (Chinese)"],
-            "mitigations": ["string (Chinese)"],
+            "risks": ["string"],
+            "mitigations": ["string"],
             "severity": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
-            "stressTest": "string (Chinese)"
+            "stressTest": "string"
         },
         "modelFusionConfidence": number, 
         "guruInsights": [],
@@ -320,21 +373,20 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
       Execute Trinity Consensus Protocol for ${symbol} on ${timeframe}.
       ${searchInstructions}
       
-      ${imageBase64 ? `**VISION MODE ENGAGED (HIGHEST PRIORITY)**: 
-      1. **SCAN THE CHART IMAGE**: Look closely at the *latest* candles. Are there long wicks (rejection)? Is there a divergence? What color are the candles?
-      2. **PATTERN RECOGNITION**: Identify specific geometries (Triangles, Wedges, Channels) visible in the pixels.
-      3. **MANDATORY INTEGRATION**: 
-         - The 'visualAnalysis' field MUST be the **SOURCE OF TRUTH** for the 'trinityConsensus.chartPatternScore'.
-         - IF 'visualAnalysis' identifies a BEARISH pattern, 'chartPatternScore' MUST be LOW (<45).
-         - IF 'visualAnalysis' identifies a BULLISH pattern, 'chartPatternScore' MUST be HIGH (>55).
-         - The 'tradingSetup' MUST target the specific pattern identified in the image.
-      ` : 'TEXT MODE: Rely on Search Data for Math/Volume.'}
+      ${imageBase64 ? `**VISION MODE ENGAGED**: 
+      1. SCAN THE CHART IMAGE as Ground Truth.
+      2. 'visualAnalysis' is MANDATORY. 
+      ` : `**DEEP MINING MODE (NO IMAGE)**: 
+      1. You are BLIND to the chart. You MUST rely on SEARCH RESULTS to reconstruct the structure.
+      2. TRIANGULATE: Verify support/resistance levels from at least 2 search snippets.
+      3. 'dataMining' field is MANDATORY. Fill 'keyDataPoints' with exact numbers found in text.
+      4. If data is scarce, lower the 'confidence' and 'winRate'.
+      `}
       
-      MANDATORY CHECKLIST: 
-      1. Calculate Fibonacci Retracement levels to determine Target Prices.
-      2. Check for Divergence between Price and RSI/Volume.
-      3. ENSURE COHERENCE: The 'tradingSetup' must be a direct logical consequence of the 'trinityConsensus' verdict.
-      4. LANGUAGE: All text fields must be Simplified Chinese.
+      MANDATORY: 
+      1. Calculate Fibonacci levels based on recent high/low found in search/price.
+      2. 'tradingSetup' must be a logical consequence of the evidence.
+      3. LANGUAGE: Simplified Chinese.
       
       Reference Price: ${currentPrice}
     `;
@@ -345,7 +397,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
           systemInstruction: systemPrompt,
           tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
-          // ZERO TEMP FOR MAX CONSISTENCY
           temperature: 0.0, 
           topK: 1, 
           topP: 0.95
@@ -378,7 +429,6 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
         }
         
         // --- RIGOROUS CONSISTENCY ENFORCEMENT ---
-        // Recalculate Win Rate based on Trinity Consensus if available
         if (data.trinityConsensus) {
             const { quantScore, smartMoneyScore, chartPatternScore } = data.trinityConsensus;
             // Weighted Average
@@ -386,9 +436,13 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
             
             // Divergence Penalty
             if (Math.abs(quantScore - smartMoneyScore) > 30) {
-                 console.log("Significant Divergence Detected - Penalizing Win Rate");
                  calculatedWinRate -= 10;
                  data.trinityConsensus.consensusVerdict = 'DIVERGENCE (背离)';
+            }
+            
+            // Text-Mode specific penalty if confidence is low
+            if (!imageBase64 && data.dataMining && data.dataMining.confidenceLevel === 'Low') {
+                calculatedWinRate -= 5;
             }
             
             data.winRate = Math.max(0, Math.min(100, calculatedWinRate));

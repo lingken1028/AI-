@@ -115,6 +115,15 @@ export interface TrendResonance {
     resonance: 'Resonant (顺势)' | 'Conflict (逆势/回调)' | 'Chaos (震荡)';
 }
 
+// NEW: Data Mining for Text-Only Mode
+export interface DataMining {
+    sourcesCount: number;
+    confidenceLevel: 'High' | 'Medium' | 'Low';
+    keyDataPoints: string[]; // e.g., "Fib 0.618 at 150.2", "Options Max Pain 155"
+    contradictions: string[]; // e.g., "News bullish but Volume dropping"
+    primaryTrendSource: string; // "Technical Indicators" or "News Sentiment"
+}
+
 export interface AIAnalysis {
   signal: SignalType;
   realTimePrice?: number; 
@@ -136,7 +145,12 @@ export interface AIAnalysis {
   kLineTrend: string; 
   
   // New Enhanced Fields
-  visualAnalysis?: string; // NEW: Specific visual findings from Image Model
+  visualAnalysis?: string; // If Image provided
+  dataMining?: DataMining; // If NO Image provided
+  
+  // NEW: Market Context to show specific logic (A-Share vs US)
+  marketContext?: 'CN_ASHARE' | 'US_EQUITY' | 'CRYPTO' | 'GLOBAL_FX';
+
   trendResonance?: TrendResonance;
   
   marketRegime?: MarketRegime; 

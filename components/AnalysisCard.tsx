@@ -1,7 +1,9 @@
+
+
 import React, { useState, useEffect } from 'react';
-import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis } from '../types';
+import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis, DataMining } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine, Database, Server, Network, Coins, Landmark } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -358,6 +360,74 @@ const AnalysisLoadingState = () => {
     );
 };
 
+// NEW: Data Mining Card for No-Image Text Mode
+const DataMiningCard = ({ data }: { data: DataMining }) => {
+    const isHighConf = data.confidenceLevel === 'High';
+    const isLowConf = data.confidenceLevel === 'Low';
+    
+    return (
+        <div className="bg-[#0c1015] rounded-xl p-4 border border-blue-900/30 relative overflow-hidden group ml-1">
+             <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Database className="w-16 h-16 text-blue-500"/></div>
+             <div className="flex items-center justify-between mb-3 border-b border-gray-800/50 pb-2">
+                <div className="flex items-center gap-2">
+                    <span className="bg-blue-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded flex items-center gap-1"><Network className="w-2 h-2"/> DEEP MINING</span>
+                    <h3 className="text-blue-400 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                        全网数据三角定位
+                    </h3>
+                </div>
+                <div className={`text-[9px] px-2 py-0.5 rounded border font-mono ${isHighConf ? 'text-green-400 border-green-500/30' : isLowConf ? 'text-red-400 border-red-500/30' : 'text-yellow-400 border-yellow-500/30'}`}>
+                    CONFIDENCE: {data.confidenceLevel}
+                </div>
+             </div>
+
+            <div className="grid grid-cols-1 gap-2 mb-3">
+                 <div className="text-[9px] text-gray-500 font-bold uppercase mb-1">关键数据锚点 (Anchors)</div>
+                 {data.keyDataPoints.slice(0, 3).map((point, i) => (
+                     <div key={i} className="flex gap-2 text-[10px] text-gray-300 bg-[#151c24] p-1.5 rounded border border-gray-800/50">
+                         <span className="text-blue-500 font-mono">0{i+1}</span>
+                         <span>{point}</span>
+                     </div>
+                 ))}
+            </div>
+            
+            {data.contradictions.length > 0 && (
+                <div className="bg-red-900/10 p-2 rounded border border-red-500/20">
+                     <div className="text-[9px] text-red-400 font-bold uppercase mb-1 flex items-center gap-1"><AlertTriangle className="w-2.5 h-2.5"/> 数据分歧 (Divergence)</div>
+                     <div className="text-[10px] text-red-200/70 leading-relaxed">
+                         {data.contradictions[0]}
+                     </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const MarketBadge = ({ context }: { context: string }) => {
+    let icon = <Globe className="w-3 h-3" />;
+    let text = "GLOBAL";
+    let style = "bg-blue-500/10 border-blue-500/30 text-blue-400";
+    
+    if (context === 'CN_ASHARE') {
+        icon = <Landmark className="w-3 h-3" />;
+        text = "A股策略 (CN POLICY)";
+        style = "bg-red-500/10 border-red-500/30 text-red-400";
+    } else if (context === 'US_EQUITY') {
+        icon = <BarChart4 className="w-3 h-3" />;
+        text = "美股/机构 (INSTITUTIONAL)";
+        style = "bg-green-500/10 border-green-500/30 text-green-400";
+    } else if (context === 'CRYPTO') {
+        icon = <Coins className="w-3 h-3" />;
+        text = "加密资产 (CRYPTO)";
+        style = "bg-yellow-500/10 border-yellow-500/30 text-yellow-400";
+    }
+    
+    return (
+        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-bold uppercase tracking-wider ${style} shadow-sm`}>
+            {icon} {text}
+        </div>
+    );
+}
+
 const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, onAnalyze, symbol }) => {
   const isInitialLoading = loading && !analysis;
   const isRefreshing = loading && !!analysis;
@@ -461,9 +531,8 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                  <div className={`text-[10px] px-2.5 py-1 rounded-md font-bold border uppercase flex items-center gap-1.5 ${structureColor} shadow-sm`}>
                     <Layers className="w-3 h-3" /> {translateTerm(analysis.marketStructure)}
                  </div>
-                 <div className="text-[9px] px-2 py-1 rounded-md bg-[#0b1215] text-gray-400 border border-gray-700/50 truncate max-w-[120px] font-mono">
-                    {analysis.strategyMatch}
-                 </div>
+                 {/* Market Context Badge */}
+                 {analysis.marketContext && <MarketBadge context={analysis.marketContext} />}
             </div>
             <div className={`flex items-center gap-3 text-5xl font-black ${signalColor} tracking-tighter filter drop-shadow-lg`}>
               <SignalIcon className="w-10 h-10" />
@@ -630,8 +699,8 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                         </div>
                     )}
                     
-                    {/* NEW: VISUAL ANALYSIS CARD (Integrate right below consensus if present) */}
-                    {analysis.visualAnalysis && (
+                    {/* NEW: VISUAL OR DATA ANALYSIS CARD */}
+                    {analysis.visualAnalysis ? (
                         <div className="bg-indigo-900/10 rounded-xl p-4 border border-indigo-500/30 relative overflow-hidden group ml-1">
                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
                              <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Eye className="w-16 h-16 text-indigo-500"/></div>
@@ -645,7 +714,10 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                                 <Typewriter text={analysis.visualAnalysis} speed={5} />
                             </div>
                         </div>
-                    )}
+                    ) : analysis.dataMining ? (
+                        /* DATA MINING DISPLAY IF NO IMAGE */
+                        <DataMiningCard data={analysis.dataMining} />
+                    ) : null}
                 
                     {/* Technical Cockpit */}
                     {analysis.technicalIndicators && (
