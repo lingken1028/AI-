@@ -87,7 +87,10 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
       else if (cleanQuery === 'BTC') cleanQuery = 'BINANCE:BTCUSDT';
       else if (cleanQuery === 'ETH') cleanQuery = 'BINANCE:ETHUSDT';
       else if (cleanQuery === 'SOL') cleanQuery = 'BINANCE:SOLUSDT';
-      else if (cleanQuery === 'XAUUSD') cleanQuery = 'OANDA:XAUUSD';
+      else if (cleanQuery === 'XAUUSD' || cleanQuery === 'GOLD') cleanQuery = 'OANDA:XAUUSD';
+      else if (cleanQuery === 'XAGUSD' || cleanQuery === 'SILVER') cleanQuery = 'OANDA:XAGUSD';
+      else if (cleanQuery === 'USOIL') cleanQuery = 'TVC:USOIL';
+      else if (cleanQuery === 'UKOIL') cleanQuery = 'TVC:UKOIL';
       else if (!cleanQuery.includes(':') && /^[A-Z]{1,5}$/.test(cleanQuery)) {
           cleanQuery = `NASDAQ:${cleanQuery}`; // Default to NASDAQ for simple tickers
       }
@@ -109,6 +112,12 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
            - Input is 1-5 letters (e.g., AAPL, NVDA).
            - Output format: "NASDAQ:TICKER" or "NYSE:TICKER".
         3. **Crypto**: "BINANCE:BTCUSDT".
+        4. **Commodities/Forex**:
+           - Gold: "OANDA:XAUUSD"
+           - Silver: "OANDA:XAGUSD"
+           - Oil: "TVC:USOIL"
+           - General Forex: "OANDA:EURUSD", etc.
+           - DO NOT use generic "FOREX:" prefix. Use "OANDA:" or "FX:".
         
         **OUTPUT REQUIREMENT**:
         - Name: **MUST BE IN CHINESE** if the company is Chinese or has a well-known Chinese name (e.g., "英伟达 (NVIDIA)", "贵州茅台", "腾讯控股").
@@ -152,6 +161,11 @@ export const lookupStockSymbol = async (query: string): Promise<StockSymbol> => 
         }
       }
 
+      // Fix generic FOREX to OANDA for better Chart compatibility
+      if (data.symbol.startsWith('FOREX:')) {
+          data.symbol = data.symbol.replace('FOREX:', 'OANDA:');
+      }
+
       return { 
           symbol: data.symbol, 
           name: data.name || 'Unknown', 
@@ -189,7 +203,7 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     // Strict A-Share detection: SSE/SZSE prefix OR 6-digit code
     const isAShare = symbol.startsWith('SSE') || symbol.startsWith('SZSE') || /^[0-9]{6}$/.test(symbol.split(':')[1] || '');
     const isCrypto = symbol.includes('BTC') || symbol.includes('ETH') || symbol.includes('USDT') || symbol.includes('SOL') || symbol.includes('BINANCE');
-    const isForex = symbol.startsWith('FX') || symbol.startsWith('OANDA');
+    const isForex = symbol.startsWith('FX') || symbol.startsWith('OANDA') || symbol.startsWith('TVC');
     const isUSStock = !isAShare && !isCrypto && !isForex;
 
     let marketContext = 'GLOBAL_FX';
