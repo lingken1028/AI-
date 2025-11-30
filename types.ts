@@ -136,6 +136,7 @@ export interface AIAnalysis {
   kLineTrend: string; 
   
   // New Enhanced Fields
+  visualAnalysis?: string; // NEW: Specific visual findings from Image Model
   trendResonance?: TrendResonance;
   
   marketRegime?: MarketRegime; 

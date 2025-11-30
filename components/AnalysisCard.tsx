@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { AIAnalysis, SignalType, RedTeaming, TradingSetup, TrinityConsensus, SmartMoneyAnalysis } from '../types';
 import { formatCurrency } from '../constants';
-import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, ShieldAlert, Target, Activity, Zap, Globe, Bot, History, Loader2, BrainCircuit, Crosshair, CheckCircle2, ListChecks, CandlestickChart, Users, Cpu, AlertTriangle, ArrowRight, Gauge, BarChart3, Layers, Lock, Unlock, Terminal, Quote, Navigation, GitMerge, Sliders, Radar, Radio, BarChart4, ShieldCheck, Check, Search, Siren, HelpCircle, ArrowUpRight, ArrowDownRight, Briefcase, BarChart2, GitCommit, ChevronRight, PenTool, AlertOctagon, Scale, Wallet, LineChart, Eye, ScanLine } from 'lucide-react';
 
 interface AnalysisCardProps {
   analysis: AIAnalysis | null;
@@ -102,7 +101,7 @@ const ScoreDriverItem = ({ label, weight, score, color, icon }: { label: string,
 };
 
 // NEW: Trinity Consensus UI
-const TrinityConsensusCard = ({ consensus, smartMoney }: { consensus: TrinityConsensus, smartMoney?: SmartMoneyAnalysis }) => {
+const TrinityConsensusCard = ({ consensus, smartMoney, hasVisual }: { consensus: TrinityConsensus, smartMoney?: SmartMoneyAnalysis, hasVisual?: boolean }) => {
     const getVerdictColor = (v: string) => v.includes('STRONG') ? 'text-green-400 bg-green-500/10 border-green-500/30' : v.includes('DIVERGENCE') ? 'text-red-400 bg-red-500/10 border-red-500/30' : 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30';
     
     return (
@@ -127,8 +126,10 @@ const TrinityConsensusCard = ({ consensus, smartMoney }: { consensus: TrinityCon
                      <div className="text-[9px] text-gray-500 font-bold uppercase mb-1">资金派 (Money)</div>
                      <div className="text-lg font-mono font-bold text-yellow-400">{consensus.smartMoneyScore}</div>
                  </div>
-                 <div className="bg-[#151c24] p-2 rounded-lg text-center border border-gray-800">
-                     <div className="text-[9px] text-gray-500 font-bold uppercase mb-1">技术派 (Chart)</div>
+                 <div className="bg-[#151c24] p-2 rounded-lg text-center border border-gray-800 relative overflow-hidden">
+                     {/* Visual Indicator */}
+                     {hasVisual && <div className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-indigo-500/20" title="Vision Model Active"><Eye className="w-2.5 h-2.5 text-indigo-400 animate-pulse"/></div>}
+                     <div className="text-[9px] text-gray-500 font-bold uppercase mb-1 flex items-center justify-center gap-1">技术派 (Chart)</div>
                      <div className="text-lg font-mono font-bold text-purple-400">{consensus.chartPatternScore}</div>
                  </div>
              </div>
@@ -624,7 +625,25 @@ const AnalysisCard: React.FC<AnalysisCardProps> = ({ analysis, loading, error, o
                             <TrinityConsensusCard 
                                 consensus={analysis.trinityConsensus} 
                                 smartMoney={analysis.smartMoneyAnalysis} 
+                                hasVisual={!!analysis.visualAnalysis}
                             />
+                        </div>
+                    )}
+                    
+                    {/* NEW: VISUAL ANALYSIS CARD (Integrate right below consensus if present) */}
+                    {analysis.visualAnalysis && (
+                        <div className="bg-indigo-900/10 rounded-xl p-4 border border-indigo-500/30 relative overflow-hidden group ml-1">
+                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500/50"></div>
+                             <div className="absolute top-0 right-0 p-2 opacity-5 group-hover:opacity-10 transition-opacity"><Eye className="w-16 h-16 text-indigo-500"/></div>
+                             <div className="flex items-center gap-2 mb-2">
+                                <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">PRIMARY SOURCE</span>
+                                <h3 className="text-indigo-400 text-[10px] font-bold uppercase flex items-center gap-2 tracking-widest">
+                                    <ScanLine className="w-3 h-3" /> AI 视觉洞察 (Vision Insights)
+                                </h3>
+                             </div>
+                            <div className="text-xs text-indigo-200/90 leading-relaxed font-light">
+                                <Typewriter text={analysis.visualAnalysis} speed={5} />
+                            </div>
                         </div>
                     )}
                 
