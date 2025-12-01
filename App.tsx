@@ -48,6 +48,8 @@ const App: React.FC = () => {
 
   // FIX: Ref to track locked state for async operations to prevent race conditions
   const isLockedRef = useRef(isPriceManuallySet);
+  
+  // Sync Ref with State
   useEffect(() => {
     isLockedRef.current = isPriceManuallySet;
   }, [isPriceManuallySet]);
@@ -65,6 +67,7 @@ const App: React.FC = () => {
     }
     setIsEditingPrice(false);
     setIsPriceManuallySet(false); // Reset lock on stock switch
+    isLockedRef.current = false; // Immediate sync
     setSelectedImage(null); // Reset image on stock switch
   }, [selectedSymbol]);
 
@@ -121,6 +124,7 @@ const App: React.FC = () => {
       setSelectedSymbol(stock);
       setCurrentPrice(stock.currentPrice); 
       setIsPriceManuallySet(false); // Reset lock
+      isLockedRef.current = false; // Immediate sync
       setAnalysis(null); // Clear old analysis
       setSelectedImage(null);
       
@@ -133,6 +137,13 @@ const App: React.FC = () => {
       try {
           console.log(`Silent refreshing price for ${stock.symbol}...`);
           const freshData = await lookupStockSymbol(stock.symbol);
+          
+          // CRITICAL FIX: Check if user locked the price WHILE we were fetching
+          if (isLockedRef.current) {
+              console.log("User locked price during refresh, aborting update.");
+              return;
+          }
+
           if (freshData && freshData.currentPrice > 0) {
               console.log(`Price refreshed: ${freshData.currentPrice}`);
               setCurrentPrice(freshData.currentPrice);
@@ -305,6 +316,7 @@ const App: React.FC = () => {
     if (!isNaN(val) && val > 0) {
       setCurrentPrice(val);
       setIsPriceManuallySet(true); // MARK AS MANUALLY SET
+      isLockedRef.current = true; // Immediate sync
       
       // Update the watchlist item too so it persists
       const updatedWatchlist = watchlist.map(s => 
@@ -317,6 +329,7 @@ const App: React.FC = () => {
 
   const handleUnlockPrice = () => {
       setIsPriceManuallySet(false);
+      isLockedRef.current = false; // Immediate sync
       refreshPriceForce(); // Trigger immediate refresh
   };
 
