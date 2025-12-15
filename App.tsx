@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Activity, Clock, Menu, Search, TrendingUp, TrendingDown, X, Trash2, Plus, Loader2, BarChart2, ChevronUp, ChevronDown, Edit2, Check, Navigation, Target, ShieldAlert, Layers, Lock, Unlock, HelpCircle, Camera, Image as ImageIcon } from 'lucide-react';
 import StockChart from './components/StockChart';
@@ -49,10 +48,17 @@ const App: React.FC = () => {
   // FIX: Ref to track locked state for async operations to prevent race conditions
   const isLockedRef = useRef(isPriceManuallySet);
   
+  // FIX: Ref to track current symbol to prevent cross-talk race conditions
+  const selectedSymbolRef = useRef(selectedSymbol);
+
   // Sync Ref with State
   useEffect(() => {
     isLockedRef.current = isPriceManuallySet;
   }, [isPriceManuallySet]);
+  
+  useEffect(() => {
+    selectedSymbolRef.current = selectedSymbol;
+  }, [selectedSymbol]);
 
   // 2. PERSISTENCE: Save to localStorage whenever watchlist changes
   useEffect(() => {
@@ -66,8 +72,8 @@ const App: React.FC = () => {
         setCurrentPrice(selectedSymbol.currentPrice);
     }
     setIsEditingPrice(false);
-    setIsPriceManuallySet(false); // Reset lock on stock switch
-    isLockedRef.current = false; // Immediate sync
+    // Note: We do NOT reset isPriceManuallySet here because handleStockSelect handles it. 
+    // This effect runs after render, preventing double-reset issues.
     setSelectedImage(null); // Reset image on stock switch
   }, [selectedSymbol]);
 
@@ -84,19 +90,25 @@ const App: React.FC = () => {
   }, [selectedSymbol, isEditingPrice]); // Removed isPriceManuallySet from deps as Ref handles it
 
   const refreshPriceSilent = async () => {
+      // Capture symbol at start of operation
+      const targetSymbol = selectedSymbol.symbol;
+
       // Double check lock via Ref to prevent race conditions during async wait
       if (isLockedRef.current) return;
 
       try {
-          const freshData = await lookupStockSymbol(selectedSymbol.symbol);
+          const freshData = await lookupStockSymbol(targetSymbol);
           
-          // Final check before applying state
+          // CRITICAL CHECKS:
+          // 1. Is lock active?
+          // 2. Are we still on the same symbol? (Prevent cross-talk)
           if (isLockedRef.current) return;
+          if (selectedSymbolRef.current.symbol !== targetSymbol) return;
 
           if (freshData && freshData.currentPrice > 0) {
               setCurrentPrice(freshData.currentPrice);
               setWatchlist(prev => prev.map(s => 
-                  s.symbol === selectedSymbol.symbol ? { ...s, currentPrice: freshData.currentPrice } : s
+                  s.symbol === targetSymbol ? { ...s, currentPrice: freshData.currentPrice } : s
               ));
           }
       } catch (e) {
@@ -120,6 +132,9 @@ const App: React.FC = () => {
 
   // Function to handle stock selection with Auto-Refresh Price
   const handleStockSelect = async (stock: StockSymbol) => {
+      // FIX: Prevent re-selecting the same stock from resetting the lock
+      if (stock.symbol === selectedSymbol.symbol) return;
+
       // 1. Immediate UI Update (Optimistic)
       setSelectedSymbol(stock);
       setCurrentPrice(stock.currentPrice); 
@@ -141,6 +156,10 @@ const App: React.FC = () => {
           // CRITICAL FIX: Check if user locked the price WHILE we were fetching
           if (isLockedRef.current) {
               console.log("User locked price during refresh, aborting update.");
+              return;
+          }
+          // CRITICAL FIX: Check if user switched symbol again WHILE we were fetching
+          if (selectedSymbolRef.current.symbol !== stock.symbol) {
               return;
           }
 
@@ -337,6 +356,10 @@ const App: React.FC = () => {
     setIsEditingPrice(false);
   };
 
+  // Define Timeframe Groups
+  const minuteTimeframes = [Timeframe.M1, Timeframe.M3, Timeframe.M5, Timeframe.M15, Timeframe.M30];
+  const hourDayTimeframes = [Timeframe.H1, Timeframe.H2, Timeframe.H4, Timeframe.D1];
+
   return (
     <div className="flex h-screen bg-[#0b1215] text-[#eceff1] font-sans overflow-hidden selection:bg-blue-500/30">
       
@@ -530,22 +553,51 @@ const App: React.FC = () => {
             
             {/* Toolbar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-              <div className="flex flex-wrap gap-1 bg-[#151c24] p-1.5 rounded-xl border border-gray-800 shadow-sm w-fit">
-                {TIMEFRAMES.map((tf) => (
-                  <button
-                    key={tf}
-                    onClick={() => setSelectedTimeframe(tf)}
-                    className={`
-                      px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all duration-200
-                      ${selectedTimeframe === tf 
-                        ? 'bg-blue-600 text-white shadow-md' 
-                        : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                      }
-                    `}
-                  >
-                    {tf}
-                  </button>
-                ))}
+              
+              {/* TIMEFRAME SELECTOR (GROUPED) */}
+              <div className="flex flex-wrap gap-2 items-center bg-[#151c24] p-1.5 rounded-xl border border-gray-800 shadow-sm w-fit">
+                
+                {/* Minute Group */}
+                <div className="flex gap-1">
+                    {minuteTimeframes.map((tf) => (
+                    <button
+                        key={tf}
+                        onClick={() => setSelectedTimeframe(tf)}
+                        className={`
+                        px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 min-w-[36px]
+                        ${selectedTimeframe === tf 
+                            ? 'bg-blue-600 text-white shadow-md' 
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                        }
+                        `}
+                    >
+                        {tf}
+                    </button>
+                    ))}
+                </div>
+
+                {/* Divider */}
+                <div className="w-px h-6 bg-gray-700 mx-1"></div>
+
+                {/* Hour/Day Group */}
+                <div className="flex gap-1">
+                    {hourDayTimeframes.map((tf) => (
+                    <button
+                        key={tf}
+                        onClick={() => setSelectedTimeframe(tf)}
+                        className={`
+                        px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 min-w-[36px]
+                        ${selectedTimeframe === tf 
+                            ? 'bg-purple-600 text-white shadow-md' 
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                        }
+                        `}
+                    >
+                        {tf}
+                    </button>
+                    ))}
+                </div>
+
               </div>
 
               <div className="flex items-center gap-3">

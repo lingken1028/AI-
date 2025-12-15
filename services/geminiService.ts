@@ -193,11 +193,66 @@ const getPredictionHorizon = (tf: Timeframe): string => {
   }
 };
 
+const getTimeframeInstructions = (tf: Timeframe): string => {
+    switch (tf) {
+        case Timeframe.M1:
+        case Timeframe.M3:
+            return `
+                **TIMEFRAME STRATEGY: MICRO-SCALPING (超短线/高频)**
+                - **Focus**: Pure Order Flow, Tape Reading, Level 2 Liquidity Sweeps.
+                - **Noise**: Extremely high. IGNORE standard RSI overbought/sold. Focus on DIVERGENCE.
+                - **Setup**: "Stop Hunt" (sweeping highs/lows) is the primary entry signal.
+                - **Validation**: Must see immediate reaction. If price stalls, GET OUT.
+            `;
+        case Timeframe.M5:
+             return `
+                **TIMEFRAME STRATEGY: SCALP ENTRY (短线狙击)**
+                - **Focus**: 5-Minute Fair Value Gaps (FVG) and Order Blocks.
+                - **Role**: The bridge between noise (1m) and structure (15m). Best for entry triggers.
+                - **Pattern**: Look for "Turtle Soup" (failed breakout) patterns here.
+            `;
+        case Timeframe.M15:
+        case Timeframe.M30:
+            return `
+                **TIMEFRAME STRATEGY: INTRADAY STRUCTURE (日内结构)**
+                - **Focus**: Opening Range (ORB), Session High/Low, VWAP Reversion.
+                - **Confluence**: Must align with H1/H4 directional bias.
+                - **Key Levels**: Previous Day High (PDH), Previous Day Low (PDL).
+                - **Trap Detection**: Look for "False Breakouts" at key hourly levels.
+            `;
+        case Timeframe.H1:
+        case Timeframe.H2:
+            return `
+                **TIMEFRAME STRATEGY: SWING SETUP (日内波段)**
+                - **Focus**: Market Structure Shift (MSS) with candle CLOSE.
+                - **Role**: Defines the "Session Trend". Do not trade against the H1/H2 trend during intraday.
+                - **Liquidity**: Target the liquidity pools resting above/below old 1H highs/lows.
+            `;
+        case Timeframe.H4:
+            return `
+                **TIMEFRAME STRATEGY: MAJOR STRUCTURE (结构性趋势)**
+                - **Focus**: The "King" of Swing Trading. Dominant Trend Setter.
+                - **Quality**: Signals here override all lower timeframes.
+                - **Supply/Demand**: Trade from "Fresh" H4 zones only. High probability.
+                - **Macro**: Correlation with DXY/BTC/Sector Index is mandatory.
+            `;
+        case Timeframe.D1:
+            return `
+                **TIMEFRAME STRATEGY: POSITION/MACRO (趋势/宏观)**
+                - **Focus**: Fundamental Valuation + Technical Trend.
+                - **Cycle**: Wyckoff Accumulation/Distribution phases.
+            `;
+        default:
+            return `**TIMEFRAME STRATEGY: GENERAL TREND**`;
+    }
+};
+
 export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, currentPrice: number, imageBase64?: string, isLockedPrice: boolean = false): Promise<RealTimeAnalysis> => {
     const ai = initAI();
     if (!ai) throw new Error("API Key not configured");
 
     const horizon = getPredictionHorizon(timeframe);
+    const timeframeInst = getTimeframeInstructions(timeframe);
     
     // --- 1. MARKET SEGMENTATION LOGIC ---
     // Strict A-Share detection: SSE/SZSE prefix OR 6-digit code
@@ -264,34 +319,43 @@ export const analyzeMarketData = async (symbol: string, timeframe: Timeframe, cu
     }
 
     const systemPrompt = `
-      You are **TradeGuard Pro**, an elite institutional trading AI.
+      You are **TradeGuard Pro (Zenith Core)**, an elite multi-strategy hedge fund AI analyst.
       
-      **CORE ARCHITECTURE: THE EXECUTION FUNNEL**
+      **YOUR MISSION**: Perform a deep-dive, multi-dimensional analysis of ${symbol} on the **${timeframe}** timeframe.
+      
+      ${timeframeInst}
+      
+      **CORE ARCHITECTURE: THE EXECUTION FUNNEL (v4.0)**
       You must follow a strict "Funnel Logic". You cannot generate the "Execution Map" until all other modules pass their checks.
       
-      **STEP 1: TRINITY CONSENSUS (Direction Filter)**
-      - Analyze Technicals, Flow, and Sentiment.
+      **STEP 1: FRACTAL REALITY CHECK (The Trend)**
+      - **Rule**: If you are analyzing M5, you MUST verify the H1 trend. If M5 is Bullish but H1 is Bearish, this is a "Counter-Trend Scalp" (High Risk).
+      - **Action**: Define the "Trend Resonance" (HTF vs LTF).
+      
+      **STEP 2: TRINITY CONSENSUS (Direction Filter)**
+      - **Technicals**: RSI, MACD, KDJ, Bollinger Bands.
+      - **Flow**: Volume Profile, Institutional Inflow/Outflow.
+      - **Sentiment**: Social buzz, Fear/Greed index.
       - **CONSTRAINT**: If Technicals say BUY but Institutional Flow says SELL, the Signal MUST be "NEUTRAL". Do not force a trade.
       
-      **STEP 2: RED TEAMING (Risk Filter)**
-      - Ask: "Where does this trade fail?" (The Invalidation Point).
-      - **CONSTRAINT**: Your **Stop Loss** MUST be placed slightly beyond this Invalidation Point. It cannot be arbitrary.
+      **STEP 3: RED TEAMING (Risk Filter - The "Critic")**
+      - Act as a Permabear/Permabull Critic. Ask: "Where does this trade fail?" (The Invalidation Point).
+      - **CONSTRAINT**: Your **Stop Loss** MUST be placed slightly beyond this Invalidation Point (Market Structure Low/High).
       
-      **STEP 3: SCENARIO MAPPING (Target Filter)**
-      - **TP1 (Conservative)**: Must align with the "Neutral Scenario" resistance.
-      - **TP2 (Standard)**: Must align with the "Bullish Scenario" structural high.
-      - **TP3 (Moonbag)**: Fibonacci extension or "Blue Sky" setup.
-
-      **STEP 4: FINAL EXECUTION MAP (The Output)**
+      **STEP 4: SCENARIO MAPPING (Target Filter)**
+      - **TP1 (Conservative)**: Must align with the "Neutral Scenario" resistance or nearest Liquidity Pool.
+      - **TP2 (Standard)**: Must align with the "Bullish Scenario" structural high or Fibonacci 1.618.
+      
+      **STEP 5: FINAL EXECUTION MAP (The Output)**
       - Only populate "entryPrice", "stopLoss", and "takeProfit" based on the logic above.
-      - **Entry Strategy**: Must specify "Breakout", "Retest", or "Limit Order".
+      - **Entry Strategy**: Must specify "Breakout", "Retest", "Limit Order", or "Market (Aggressive)".
       - **IMPORTANT**: If SIGNAL is 'SELL', TakeProfit MUST be < Entry. If SIGNAL is 'BUY', TakeProfit MUST be > Entry.
       
       **PHASE 1: HARD DATA MINING (The "Truth" Layer)**
       You MUST use Google Search to find ACTUAL values.
       - **A-Shares**: Search "北向资金 ${symbol}", "主力资金流向 ${symbol}", "涨停分析 ${symbol}".
       - **US Stocks**: Search "Gamma Exposure ${symbol}", "Max Pain ${symbol}", "Dark Pool ${symbol}".
-      - **General**: RSI, Market Cap, PE Ratio.
+      - **General**: RSI, Market Cap, PE Ratio, Recent News.
       
       **PHASE 2: STRATEGY SYNTHESIS**
       - IF A-Share AND Price near +10%: Logic is "Da Ban" (打板). Verify Seal Strength.
